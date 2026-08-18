@@ -1,47 +1,111 @@
+/* ============================================================
+   考公速算训练营 · 笔记风格主题
+   设计参考：Kimi Code 官网 —— 干净的浅色页面、深色终端面板、
+   蓝色强调色、大圆角卡片、等宽数字；叠加笔记元素：点阵纸面、
+   和纸胶带、虚线填空、荧光笔标记、便签纸页脚。
+   ============================================================ */
+
 :root {
-  --ink: #20263d;
-  --muted: #6b7280;
-  --bg: #f2f4fb;
-  --primary: #4f46e5;
-  --primary-strong: #7c3aed;
+  /* 字体 */
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+  --font-mono:
+    'JetBrains Mono', 'Cascadia Code', ui-monospace, 'SF Mono', Menlo,
+    Consolas, 'Liberation Mono', monospace;
+
+  /* Kimi Code 浅色调色板 */
+  --ink: #15171c;
+  --muted: #5c6470;
+  --faint: #c6ccd6;
+  --bg: #f6f7f9;
+  --bg-dot: rgba(21, 23, 28, 0.05);
+  --primary: #2f6bff;
+  --primary-deep: #1e56eb;
+  --primary-strong: #7c5cff;
+  --accent-soft: rgba(47, 107, 255, 0.08);
+  --accent-border: rgba(47, 107, 255, 0.28);
   --card-bg: #ffffff;
-  --card-border: #eceef7;
-  --chip-bg: #eef0fa;
-  --chip-ink: #39415e;
-  --hover-bg: #f5f4ff;
-  --progress-bg: #e6e8f4;
-  --faint: #c3c8d9;
+  --card-border: #e6e8ee;
+  --chip-bg: #f2f4f7;
+  --chip-ink: #5c6470;
+  --hover-bg: #f0f5ff;
+  --progress-bg: #e3e6ec;
   --ok: #16a34a;
   --bad: #dc2626;
-  --card-shadow: 0 1px 2px rgba(16, 24, 64, 0.06), 0 8px 24px rgba(16, 24, 64, 0.07);
+
+  /* 笔记纸张 */
+  --paper: #fffdf8;
+  --paper-dot: rgba(21, 23, 28, 0.07);
+  --paper-margin: rgba(255, 99, 99, 0.3);
+  --tape: rgba(255, 214, 102, 0.55);
+  --highlight: rgba(47, 107, 255, 0.16);
+  --note-bg: #fdf5c0;
+  --note-border: #ecdf96;
+  --note-ink: #6d6222;
+
+  /* 深色终端面板（两种主题通用） */
+  --terminal-bg: #0b0f14;
+  --terminal-border: #1f2630;
+  --terminal-text: #e6edf3;
+  --terminal-green: #3fb950;
+
+  /* 圆角与阴影 */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --shadow-sm: 0 1px 2px rgba(15, 17, 21, 0.05);
+  --card-shadow:
+    0 1px 2px rgba(15, 17, 21, 0.04), 0 8px 24px rgba(15, 17, 21, 0.06);
   color-scheme: light;
 }
 
 [data-theme='dark'] {
-  --ink: #e9ebf5;
-  --muted: #9aa2b8;
-  --bg: #131520;
-  --primary: #6366f1;
+  /* Kimi Code 深色（终端）调色板 */
+  --ink: #e6edf3;
+  --muted: #9aa4b2;
+  --faint: #3d4653;
+  --bg: #0b0f14;
+  --bg-dot: rgba(230, 237, 243, 0.045);
+  --primary: #5b8cff;
+  --primary-deep: #7aa1ff;
   --primary-strong: #a78bfa;
-  --card-bg: #1d2030;
-  --card-border: #2b2f42;
-  --chip-bg: #262a3d;
-  --chip-ink: #c7cde2;
-  --hover-bg: #272b45;
-  --progress-bg: #2b2f42;
-  --faint: #575d78;
-  --ok: #4ade80;
-  --bad: #f87171;
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.35), 0 8px 24px rgba(0, 0, 0, 0.35);
+  --accent-soft: rgba(91, 140, 255, 0.12);
+  --accent-border: rgba(91, 140, 255, 0.35);
+  --card-bg: #11161d;
+  --card-border: #1f2630;
+  --chip-bg: #1a212b;
+  --chip-ink: #c3cbd8;
+  --hover-bg: #182234;
+  --progress-bg: #262e3a;
+  --ok: #3fb950;
+  --bad: #f85149;
+
+  --paper: #10151c;
+  --paper-dot: rgba(230, 237, 243, 0.06);
+  --paper-margin: rgba(248, 81, 73, 0.22);
+  --tape: rgba(255, 214, 102, 0.16);
+  --highlight: rgba(91, 140, 255, 0.22);
+  --note-bg: #262211;
+  --note-border: #3a3418;
+  --note-ink: #e3d99d;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --card-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.35);
   color-scheme: dark;
 }
 
+/* ---------- 基础 ---------- */
+
 body {
-  background: var(--bg);
+  background-color: var(--bg);
+  /* 整页淡点阵，像方格笔记本的内页 */
+  background-image: radial-gradient(var(--bg-dot) 1px, transparent 1px);
+  background-size: 22px 22px;
   color: var(--ink);
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB',
-    'Microsoft YaHei', sans-serif;
+  font-family: var(--font-sans);
   -webkit-tap-highlight-color: transparent;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
@@ -50,19 +114,39 @@ button {
   touch-action: manipulation;
 }
 
-.btn-primary {
-  --bs-btn-bg: var(--primary);
-  --bs-btn-border-color: var(--primary);
-  --bs-btn-hover-bg: #4338ca;
-  --bs-btn-hover-border-color: #4338ca;
-  --bs-btn-active-bg: #3730a3;
-  --bs-btn-active-border-color: #3730a3;
+::selection {
+  background: var(--highlight);
+}
+
+.count-chip:focus-visible,
+.cat-card:focus-visible,
+.cmp-btn:focus-visible,
+.theme-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .app-shell {
-  max-width: 920px;
+  max-width: 960px;
   margin: 0 auto;
-  padding: 24px 16px 64px;
+  padding: 28px 16px 72px;
+}
+
+.btn {
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.btn-primary {
+  --bs-btn-bg: var(--primary);
+  --bs-btn-border-color: var(--primary);
+  --bs-btn-hover-bg: var(--primary-deep);
+  --bs-btn-hover-border-color: var(--primary-deep);
+  --bs-btn-active-bg: var(--primary-deep);
+  --bs-btn-active-border-color: var(--primary-deep);
+  --bs-btn-disabled-bg: var(--faint);
+  --bs-btn-disabled-border-color: var(--faint);
+  box-shadow: 0 6px 16px -6px var(--accent-border);
 }
 
 /* ---------- 主题切换按钮 ---------- */
@@ -78,7 +162,7 @@ button {
   align-items: center;
   justify-content: center;
   font-size: 1rem;
-  box-shadow: var(--card-shadow);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.15s ease, background-color 0.25s ease, color 0.25s ease,
     border-color 0.25s ease;
   flex-shrink: 0;
@@ -86,27 +170,52 @@ button {
 
 .theme-toggle:hover {
   transform: rotate(15deg) scale(1.08);
+  border-color: var(--accent-border);
+  color: var(--primary);
 }
 
-/* ---------- 首页 ---------- */
+/* ---------- 首页 Hero ---------- */
 
 .hero {
   position: relative;
-  background: linear-gradient(135deg, #4338ca 0%, #6d28d9 55%, #9333ea 100%);
-  color: #fff;
-  border-radius: 20px;
-  padding: 36px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(47, 107, 255, 0.12), transparent 42%),
+    radial-gradient(circle at 88% 8%, rgba(124, 92, 255, 0.1), transparent 42%),
+    var(--card-bg);
+  border: 1px solid var(--card-border);
+  color: var(--ink);
+  border-radius: var(--radius-xl);
+  padding: 42px 24px 36px;
   box-shadow: var(--card-shadow);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* 顶部胶囊徽章，仿 Kimi 的公告 pill */
+.hero::before {
+  content: '📝 资料分析 · 速算练习笔记';
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  margin-bottom: 14px;
 }
 
 .hero h1 {
-  font-size: 1.9rem;
+  font-size: clamp(1.6rem, 4vw, 2.1rem);
   font-weight: 800;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 
 .hero p {
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--muted);
   margin: 0;
 }
 
@@ -116,18 +225,15 @@ button {
   right: 14px;
 }
 
-.hero-toggle .theme-toggle {
-  background: rgba(255, 255, 255, 0.16);
-  border-color: rgba(255, 255, 255, 0.28);
-  color: #fff;
-}
+/* ---------- 面板 ---------- */
 
 .panel {
   background: var(--card-bg);
-  border-radius: 20px;
-  box-shadow: var(--card-shadow);
-  padding: 22px 24px;
-  transition: background-color 0.25s ease;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  padding: 20px 22px;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
 .panel-flush {
@@ -141,24 +247,37 @@ button {
   border-radius: 999px;
   padding: 6px 18px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   color: var(--muted);
   transition: all 0.12s ease;
 }
 
 .count-chip:hover {
-  border-color: var(--primary);
+  border-color: var(--accent-border);
   color: var(--primary);
+  background: var(--accent-soft);
 }
 
 .count-chip.active {
   background: var(--primary);
   border-color: var(--primary);
   color: #fff;
+  box-shadow: 0 4px 12px -2px var(--accent-border);
 }
 
 .count-input {
   max-width: 110px;
+  border-radius: var(--radius-sm);
+  font-variant-numeric: tabular-nums;
 }
+
+/* 自定义题数组不被压缩换行，空间不足时整组换行 */
+.panel .ms-auto {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ---------- 模块卡片 ---------- */
 
 .cat-card {
   display: flex;
@@ -166,9 +285,9 @@ button {
   gap: 16px;
   background: var(--card-bg);
   border: 1px solid var(--card-border);
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   padding: 20px 22px;
-  box-shadow: var(--card-shadow);
+  box-shadow: var(--shadow-sm);
   transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.25s ease,
     border-color 0.25s ease;
   height: 100%;
@@ -178,14 +297,15 @@ button {
 }
 
 .cat-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(16, 24, 64, 0.12);
+  transform: translateY(-3px);
+  border-color: var(--accent-border);
+  box-shadow: 0 12px 28px rgba(47, 107, 255, 0.12);
 }
 
 .cat-icon {
   width: 52px;
   height: 52px;
-  border-radius: 16px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -194,12 +314,12 @@ button {
 }
 
 .tint-blue {
-  background: #e0ecff;
-  color: #2563eb;
+  background: #e5efff;
+  color: #2f6bff;
 }
 
 .tint-orange {
-  background: #ffedd5;
+  background: #ffe9d2;
   color: #ea580c;
 }
 
@@ -209,27 +329,27 @@ button {
 }
 
 .tint-purple {
-  background: #ede9fe;
-  color: #7c3aed;
+  background: #ece7ff;
+  color: #6c47ff;
 }
 
 [data-theme='dark'] .tint-blue {
-  background: rgba(37, 99, 235, 0.18);
-  color: #93bbfd;
+  background: rgba(91, 140, 255, 0.15);
+  color: #8fb0ff;
 }
 
 [data-theme='dark'] .tint-orange {
-  background: rgba(234, 88, 12, 0.18);
+  background: rgba(234, 88, 12, 0.16);
   color: #fdba74;
 }
 
 [data-theme='dark'] .tint-green {
-  background: rgba(22, 163, 74, 0.18);
-  color: #86efac;
+  background: rgba(63, 185, 80, 0.14);
+  color: #56d364;
 }
 
 [data-theme='dark'] .tint-purple {
-  background: rgba(124, 58, 237, 0.2);
+  background: rgba(167, 139, 250, 0.16);
   color: #c4b5fd;
 }
 
@@ -253,6 +373,43 @@ button {
   color: var(--faint);
   font-size: 1.2rem;
   flex-shrink: 0;
+  transition: color 0.15s ease, transform 0.15s ease;
+}
+
+.cat-card:hover .cat-go {
+  color: var(--primary);
+  transform: translateX(3px);
+}
+
+/* ---------- 页脚便签 ---------- */
+
+.app-shell footer {
+  max-width: 520px;
+  margin: 48px auto 0;
+  position: relative;
+  background: var(--note-bg);
+  border: 1px solid var(--note-border);
+  color: var(--note-ink);
+  border-radius: 4px 4px 14px 14px;
+  padding: 18px 22px 16px;
+  transform: rotate(-0.6deg);
+  box-shadow: var(--card-shadow);
+  line-height: 1.7;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+/* 便签上的胶带 */
+.app-shell footer::before {
+  content: '';
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  width: 92px;
+  height: 22px;
+  transform: translateX(-50%) rotate(1.5deg);
+  background: var(--tape);
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(15, 17, 21, 0.08);
 }
 
 /* ---------- 训练页 ---------- */
@@ -281,20 +438,32 @@ button {
   z-index: 1;
 }
 
+/* 计时胶囊：深色终端风格，呼应 Kimi Code CLI */
 .timer-chip {
-  background: var(--chip-bg);
-  color: var(--chip-ink);
+  background: var(--terminal-bg);
+  color: var(--terminal-text);
+  border: 1px solid var(--terminal-border);
   border-radius: 999px;
   padding: 6px 14px;
-  font-size: 0.9rem;
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
+  box-shadow: var(--shadow-sm);
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
+.timer-chip::before {
+  content: '●';
+  color: var(--terminal-green);
+  font-size: 0.7em;
+  margin-right: 8px;
+  vertical-align: 1px;
+}
+
 .timer-chip strong {
-  color: var(--primary);
+  color: var(--terminal-green);
 }
 
 /* 答题区布局：左侧进度轴 + 右侧题目 */
@@ -319,6 +488,15 @@ button {
   padding: 4px 2px;
 }
 
+.quiz-axis::-webkit-scrollbar {
+  width: 5px;
+}
+
+.quiz-axis::-webkit-scrollbar-thumb {
+  background: var(--progress-bg);
+  border-radius: 999px;
+}
+
 .axis-item {
   position: relative;
   display: flex;
@@ -331,19 +509,19 @@ button {
   padding-bottom: 0;
 }
 
-/* 节点之间的竖向连线 */
+/* 节点之间的竖向虚线，像笔记里的待办清单 */
 .axis-item:not(:last-child)::before {
   content: '';
   position: absolute;
   left: 13px;
-  top: 28px;
-  bottom: 0;
-  width: 2px;
-  background: var(--progress-bg);
+  top: 30px;
+  bottom: 2px;
+  width: 0;
+  border-left: 2px dashed var(--progress-bg);
 }
 
 .axis-item.done:not(:last-child)::before {
-  background: var(--primary);
+  border-left-color: var(--accent-border);
 }
 
 .axis-dot {
@@ -353,28 +531,33 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  font-family: var(--font-mono);
   font-size: 0.8rem;
   font-weight: 700;
   flex-shrink: 0;
-  background: var(--chip-bg);
+  background: var(--card-bg);
   color: var(--muted);
-  border: 2px solid transparent;
-  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+  border: 1px solid var(--card-border);
+  transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .axis-item.done .axis-dot {
   background: var(--primary);
+  border-color: var(--primary);
   color: #fff;
 }
 
 .axis-item.current .axis-dot {
   background: var(--card-bg);
-  border-color: var(--primary);
+  border: 2px solid var(--primary);
   color: var(--primary);
+  box-shadow: 0 0 0 4px var(--accent-soft);
 }
 
 .axis-time {
-  font-size: 0.78rem;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
   color: var(--muted);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -385,16 +568,42 @@ button {
   font-weight: 700;
 }
 
+/* 答题卡片：一张点阵纸，顶部贴胶带，左侧有红色页边线 */
 .quiz-card {
-  background: var(--card-bg);
-  border-radius: 20px;
+  position: relative;
+  background:
+    radial-gradient(var(--paper-dot) 1px, transparent 1.4px) 0 0 / 22px 22px,
+    linear-gradient(
+        to right,
+        transparent 34px,
+        var(--paper-margin) 34px,
+        var(--paper-margin) 35px,
+        transparent 35.5px
+      ),
+    var(--paper);
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-lg);
   box-shadow: var(--card-shadow);
-  padding: 40px 24px;
+  padding: 44px 26px 36px;
   margin-top: 8px;
-  transition: background-color 0.25s ease;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.quiz-card::before {
+  content: '';
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  width: 132px;
+  height: 26px;
+  transform: translateX(-50%) rotate(-2deg);
+  background: var(--tape);
+  border-radius: 2px;
+  box-shadow: 0 1px 3px rgba(15, 17, 21, 0.08);
 }
 
 .question-expr {
+  font-family: var(--font-mono);
   font-size: clamp(1.7rem, 4.5vw, 2.6rem);
   font-weight: 800;
   letter-spacing: 0.5px;
@@ -412,11 +621,35 @@ button {
   color: var(--faint);
 }
 
+/* 填空输入：去掉边框，只留一条虚线，像在笔记上填写 */
 .answer-input {
   max-width: 300px;
   text-align: center;
+  font-family: var(--font-mono);
   font-size: 1.4rem !important;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  caret-color: var(--primary);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  border-bottom: 2px dashed var(--faint);
+  box-shadow: none;
+  padding: 6px 10px;
+  color: var(--ink);
+  transition: border-color 0.15s ease;
+}
+
+.answer-input:focus {
+  background: transparent;
+  color: var(--ink);
+  border-bottom: 2px solid var(--primary);
+  box-shadow: none;
+}
+
+.answer-input::placeholder {
+  color: var(--faint);
+  opacity: 1;
 }
 
 .hint-text {
@@ -434,6 +667,7 @@ button {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
+  font-family: var(--font-mono);
   font-size: clamp(1.6rem, 4vw, 2.4rem);
   font-weight: 800;
   font-variant-numeric: tabular-nums;
@@ -460,11 +694,12 @@ button {
   padding: 14px 10px;
   font-size: 1.9rem;
   font-weight: 800;
-  border-radius: 18px;
-  border: 2px solid var(--card-border);
+  border-radius: 14px;
+  border: 1.5px solid var(--card-border);
   background: var(--card-bg);
   color: var(--ink);
   line-height: 1.1;
+  box-shadow: var(--shadow-sm);
   transition: all 0.12s ease;
 }
 
@@ -480,6 +715,7 @@ button {
   border-color: var(--primary);
   color: var(--primary);
   background: var(--hover-bg);
+  transform: translateY(-2px);
 }
 
 .cmp-btn:active {
@@ -490,6 +726,11 @@ button {
 
 .choice-prompt {
   font-size: 1.15rem;
+}
+
+.choice-prompt strong {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
 }
 
 .choice-question {
@@ -527,24 +768,31 @@ button {
 /* ---------- 成绩单 ---------- */
 
 .stat-card {
-  border-radius: 18px;
-  padding: 20px;
+  border: 1px solid var(--card-border);
+  border-radius: 14px;
+  padding: 18px;
   text-align: center;
   background: var(--card-bg);
-  box-shadow: var(--card-shadow);
-  transition: background-color 0.25s ease;
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.25s ease, border-color 0.25s ease;
 }
 
+/* 统计数字自带荧光笔划重点效果 */
 .stat-value {
+  display: inline-block;
+  font-family: var(--font-mono);
   font-size: 1.8rem;
   font-weight: 800;
   font-variant-numeric: tabular-nums;
+  padding: 0 10px;
+  border-radius: 4px;
+  background: linear-gradient(transparent 64%, var(--highlight) 64%);
 }
 
 .stat-label {
   color: var(--muted);
   font-size: 0.9rem;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .result-table {
@@ -555,7 +803,7 @@ button {
 .result-table th {
   color: var(--muted);
   font-weight: 600;
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   white-space: nowrap;
 }
 
@@ -563,7 +811,16 @@ button {
   vertical-align: middle;
 }
 
+.result-table tbody tr {
+  transition: background-color 0.12s ease;
+}
+
+.result-table tbody tr:hover {
+  background: var(--hover-bg);
+}
+
 .summary-cell {
+  font-family: var(--font-mono);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
@@ -593,6 +850,7 @@ button {
   flex-direction: column;
   align-items: center;
   line-height: 1.15;
+  font-family: var(--font-mono);
   font-weight: 700;
   font-variant-numeric: tabular-nums;
   vertical-align: middle;
@@ -626,26 +884,27 @@ button {
 
 @media (max-width: 576px) {
   .app-shell {
-    padding: 12px 10px 40px;
+    padding: 14px 10px 48px;
   }
 
   .hero {
-    padding: 26px 16px;
-    border-radius: 16px;
+    padding: 30px 16px 26px;
+    border-radius: var(--radius-lg);
   }
 
-  .hero h1 {
-    font-size: 1.5rem;
+  .hero::before {
+    font-size: 0.72rem;
+    padding: 5px 12px;
   }
 
   .panel {
     padding: 16px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
   }
 
   .cat-card {
     padding: 16px;
-    border-radius: 16px;
+    border-radius: var(--radius-lg);
     gap: 12px;
   }
 
@@ -653,7 +912,11 @@ button {
     width: 44px;
     height: 44px;
     font-size: 1.25rem;
-    border-radius: 12px;
+    border-radius: var(--radius-md);
+  }
+
+  .app-shell footer {
+    padding: 14px 16px 12px;
   }
 
   .quiz-top {
@@ -666,7 +929,7 @@ button {
 
   .timer-chip {
     padding: 4px 10px;
-    font-size: 0.8rem;
+    font-size: 0.75rem;
   }
 
   .quiz-body {
@@ -681,7 +944,7 @@ button {
 
   .axis-item:not(:last-child)::before {
     left: 11px;
-    top: 24px;
+    top: 26px;
   }
 
   .axis-time {
@@ -689,8 +952,14 @@ button {
   }
 
   .quiz-card {
-    padding: 26px 14px;
-    border-radius: 16px;
+    padding: 34px 14px 28px;
+    border-radius: var(--radius-lg);
+  }
+
+  .quiz-card::before {
+    width: 96px;
+    height: 22px;
+    top: -11px;
   }
 
   .answer-input {
@@ -718,7 +987,6 @@ button {
 
   .stat-card {
     padding: 14px;
-    border-radius: 14px;
   }
 
   .stat-value {

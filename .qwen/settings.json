@@ -8,7 +8,17 @@
       "Bash(\"/applications/google chrome.app/contents/macos/google chrome\" *)",
       "Bash(node *)",
       "Bash(rm *)",
-      "Bash(pkill *)"
+      "Bash(pkill *)",
+      "computer_use__get_window_state",
+      "computer_use__click",
+      "computer_use__type_text",
+      "computer_use__press_key",
+      "computer_use__bring_to_front",
+      "computer_use__list_windows",
+      "Bash(add-type *)",
+      "Bash(::showwindow)",
+      "computer_use__hotkey",
+      "Bash(del *)"
     ]
   },
   "$version": 4
