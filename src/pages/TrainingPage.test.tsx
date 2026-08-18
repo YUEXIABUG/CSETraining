@@ -89,6 +89,19 @@ describe('TrainingPage 答题流程', () => {
     expect(screen.getByText('✗ 错误')).toBeTruthy()
   })
 
+  it('答题期间可以切换亮暗主题', () => {
+    localStorage.removeItem('cse-training-theme')
+    document.documentElement.dataset.theme = 'light'
+    renderTraining('/train/multiply?count=2')
+
+    const btn = screen.getByLabelText('切换亮暗主题')
+    fireEvent.click(btn)
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(document.documentElement.dataset.bsTheme).toBe('dark')
+    fireEvent.click(btn)
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
   it('基期与增长量需同时填写，成绩单分别判对错并分别统计正确率', () => {
     renderTraining('/train/baseperiod?count=1')
 
