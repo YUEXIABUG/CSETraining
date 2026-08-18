@@ -79,7 +79,7 @@ describe('TrainingPage 答题流程', () => {
     expect(screen.getByText(/第 1 \/ 2 题/)).toBeTruthy()
   })
 
-  it('加减法答案不得有误差：1% 以内的近似值也判错', () => {
+  it('加减法答案不得有误差', () => {
     renderTraining('/train/addsub?count=1')
 
     // 9950 相对正确答案 10000 误差约 0.5%，旧容差规则会判对，现在必须判错

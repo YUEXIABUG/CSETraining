@@ -289,10 +289,6 @@ export default function TrainingPage() {
               <BasePeriodView key={index} q={question} onAnswer={handleBasePeriod} />
             )}
           </div>
-
-          <div className="text-center text-muted small mt-3">
-            {question.type === 'fraction' ? '点击按钮后自动提交并进入下一题' : '心算后输入答案，回车提交'}
-          </div>
         </div>
       </div>
     </div>
