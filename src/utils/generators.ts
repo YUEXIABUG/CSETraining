@@ -1,15 +1,40 @@
 import type {
   AddSubQuestion,
   BasePeriodQuestion,
+  BasePeriodShareQuestion,
   FractionQuestion,
   MultiplyQuestion,
   Question,
   QuestionType,
+  ShareGapQuestion,
   Term,
 } from '../types'
 
 export function randInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min
+}
+
+function round2(v: number): number {
+  return Math.round(v * 100) / 100
+}
+
+/** 去掉末尾多余的 0：16.45 → "16.45"，15.10 → "15.1"，20.00 → "20" */
+export function fmtTrim(v: number): string {
+  return v.toFixed(2).replace(/0+$/, '').replace(/\.$/, '')
+}
+
+/** 整数部分位数（用于保证选择题选项位数一致） */
+function intDigits(v: number): number {
+  return String(Math.floor(Math.abs(v))).length
+}
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
 }
 
 /**
@@ -80,25 +105,184 @@ export function genFraction(): FractionQuestion {
   }
 }
 
-/** 基期与增长量：A（四至五位）与 B（100% 以内），需同时计算基期量与增长量 */
-export function genBasePeriod(): BasePeriodQuestion {
+/** 基期与增长量：A（四至五位）与增长率（默认 -15% ~ 100%），需同时计算基期量与增长量 */
+export function genBasePeriod(minPct = -15, maxPct = 100): BasePeriodQuestion {
   const amount = randInt(1000, 99999)
-  const percent = randInt(20, 999) / 10 // 2.0% ~ 99.9%
+  const percent = randInt(Math.round(minPct * 10), Math.round(maxPct * 10)) / 10
   const b = percent / 100
   const baseAnswer = amount / (1 + b)
   const growthAnswer = amount - baseAnswer
   return { type: 'baseperiod', amount, percent, baseAnswer, growthAnswer }
 }
 
-const GENERATORS: Record<QuestionType, () => Question> = {
+/**
+ * 基期比重选择题：
+ * 基期比重 = (A / B) × (1 + Rb) / (1 + Ra)，
+ * A 为现期部分、B 为现期整体、Ra / Rb 为部分 / 整体增长率。
+ * 四个选项为位数一致、至多两位小数的百分比。
+ */
+export function genBasePeriodShare(): BasePeriodShareQuestion {
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const part = randInt(1000, 8999)
+    const total = randInt(part + 100, 9999)
+    const ra = randInt(-200, 200) / 10 // -20.0% ~ 20.0%
+    const rb = randInt(-200, 200) / 10
+    const baseShare = (part / total) * ((1 + rb / 100) / (1 + ra / 100)) * 100
+    const correct = round2(baseShare)
+    if (correct <= 0.5 || correct >= 99.5) continue
+    const digits = intDigits(correct)
+    const opts: number[] = [correct]
+    const tryAdd = (v: number) => {
+      const r = round2(v)
+      if (r <= 0 || r >= 100) return
+      if (opts.includes(r)) return
+      if (intDigits(r) !== digits) return
+      opts.push(r)
+    }
+    // 典型错项 1：误用现期比重 A / B
+    tryAdd((part / total) * 100)
+    // 典型错项 2：Ra / Rb 位置颠倒
+    tryAdd((part / total) * ((1 + ra / 100) / (1 + rb / 100)) * 100)
+    let guard = 0
+    while (opts.length < 4 && guard++ < 300) {
+      const off = (randInt(3, 80) / 10) * (Math.random() < 0.5 ? -1 : 1)
+      tryAdd(baseShare + off)
+    }
+    if (opts.length < 4) continue
+    const options = shuffle(opts.slice(0, 4))
+    return {
+      type: 'baseperiodshare',
+      part,
+      total,
+      ra,
+      rb,
+      options: options.map((v) => `${v.toFixed(2)}%`),
+      correctIndex: options.indexOf(correct),
+      answer: correct,
+    }
+  }
+  // 理论上几乎不可达的兜底
+  return {
+    type: 'baseperiodshare',
+    part: 2000,
+    total: 5000,
+    ra: 10,
+    rb: 5,
+    options: ['38.18%', '40.00%', '36.36%', '42.11%'],
+    correctIndex: 0,
+    answer: 38.18,
+  }
+}
+
+/**
+ * 比重差选择题：
+ * 比重差 = (A / B) × (Ra − Rb) / (1 + Ra)（百分点），
+ * Ra > Rb 时比重上升，反之下降。
+ * 选项结构：A 上升 V1 / B 下降 V1 / C 上升 V2 / D 下降 V2，V1 与 V2 相差 20% 以内。
+ */
+export function genShareGap(): ShareGapQuestion {
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const part = randInt(1000, 8999)
+    const total = randInt(part + 100, 9999)
+    const ra = randInt(-200, 200) / 10
+    const rb = randInt(-200, 200) / 10
+    if (ra === rb) continue // 比重差为 0，方向无意义
+    const gapPp = (part / total) * ((ra - rb) / (1 + ra / 100))
+    const value = round2(Math.abs(gapPp))
+    if (value < 0.05) continue
+    // 生成另一个与 value 相差 20% 以内的干扰数值（对舍入后的值做校验）
+    const withinGap = (a: number, b: number) => Math.abs(a - b) / Math.max(a, b) <= 0.2
+    let other = value
+    let guard = 0
+    do {
+      const delta = (randInt(5, 18) / 100) * (Math.random() < 0.5 ? -1 : 1)
+      other = round2(value * (1 + delta))
+      guard++
+    } while ((other === value || other <= 0 || !withinGap(value, other)) && guard < 200)
+    if (other === value || other <= 0 || !withinGap(value, other)) continue
+    const correctIsFirst = Math.random() < 0.5
+    const v1 = correctIsFirst ? value : other
+    const v2 = correctIsFirst ? other : value
+    const rising = ra > rb
+    const correctIndex = rising ? (correctIsFirst ? 0 : 2) : correctIsFirst ? 1 : 3
+    return {
+      type: 'sharegap',
+      part,
+      total,
+      ra,
+      rb,
+      options: [
+        `上升 ${fmtTrim(v1)} 个百分点`,
+        `下降 ${fmtTrim(v1)} 个百分点`,
+        `上升 ${fmtTrim(v2)} 个百分点`,
+        `下降 ${fmtTrim(v2)} 个百分点`,
+      ],
+      correctIndex,
+      answer: round2(gapPp),
+    }
+  }
+  return {
+    type: 'sharegap',
+    part: 2125,
+    total: 3640,
+    ra: 18.7,
+    rb: 28.2,
+    options: ['上升 4.67 个百分点', '下降 4.67 个百分点', '上升 5.13 个百分点', '下降 5.13 个百分点'],
+    correctIndex: 1,
+    answer: -4.67,
+  }
+}
+
+const GENERATORS: Record<Exclude<QuestionType, 'exam'>, () => Question> = {
   addsub: genAddSub,
   multiply: genMultiply,
   fraction: genFraction,
-  baseperiod: genBasePeriod,
+  baseperiod: () => genBasePeriod(-15, 100),
+  baseperiodshare: genBasePeriodShare,
+  sharegap: genShareGap,
 }
 
 export function generateSet(type: QuestionType, count: number): Question[] {
+  if (type === 'exam') return generateExam()
   return Array.from({ length: count }, () => GENERATORS[type]())
+}
+
+/** 套卷模式分段定义（顺序即出题顺序） */
+export const EXAM_SEGMENTS: { label: string; count: number }[] = [
+  { label: '加减法', count: 4 },
+  { label: '比较大小', count: 4 },
+  { label: '乘法运算', count: 10 },
+  { label: '基期比重', count: 2 },
+  { label: '比重差', count: 2 },
+  { label: '基期增量', count: 12 },
+]
+
+/** 套卷：4 加减法 + 4 比大小 + 10 乘法 + 2 基期比重 + 2 比重差 + 12 基期增量（6 道 0~20%、2 道 20~100%、4 道 -15~0） */
+export function generateExam(): Question[] {
+  const qs: Question[] = []
+  const push = (g: () => Question, n: number) => {
+    for (let i = 0; i < n; i++) qs.push(g())
+  }
+  push(genAddSub, 4)
+  push(genFraction, 4)
+  push(genMultiply, 10)
+  push(genBasePeriodShare, 2)
+  push(genShareGap, 2)
+  // 12 道基期增量：6 道 [0,20%)、2 道 [20%,100%]、4 道 [-15%,0)，区间互不重叠
+  push(() => genBasePeriod(0, 19.9), 6)
+  push(() => genBasePeriod(20, 100), 2)
+  push(() => genBasePeriod(-15, -0.1), 4)
+  return qs
+}
+
+/** 套卷各模块在题列中的起止下标 */
+export function examModuleRanges(): { label: string; start: number; end: number }[] {
+  let start = 0
+  return EXAM_SEGMENTS.map((s) => {
+    const range = { label: s.label, start, end: start + s.count }
+    start += s.count
+    return range
+  })
 }
 
 /** 填空题判卷：相对误差在 tolerance（默认 1%）以内判对 */

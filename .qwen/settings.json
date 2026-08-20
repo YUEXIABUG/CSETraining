@@ -18,7 +18,14 @@
       "Bash(add-type *)",
       "Bash(::showwindow)",
       "computer_use__hotkey",
-      "Bash(del *)"
+      "Bash(del *)",
+      "Bash(\"$chrome\" *)",
+      "Bash(cd *)",
+      "Bash(tail *)",
+      "Bash(git status *)",
+      "Bash(echo *)",
+      "Bash(cat *)",
+      "Bash(git diff *)"
     ]
   },
   "$version": 4

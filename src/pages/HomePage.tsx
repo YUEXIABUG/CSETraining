@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ThemeToggle } from '../components/ThemeToggle'
-import { CATEGORIES } from '../meta'
+import { CATEGORIES, EXAM_CATEGORY } from '../meta'
 
 const PRESETS = [5, 10, 15, 20]
 const STORAGE_KEY = 'cse-training-count'
@@ -24,14 +24,13 @@ export default function HomePage() {
     setCount(Math.min(100, Math.max(1, Math.round(v))))
   }
 
+  const startExam = () => navigate('/train/exam')
+
   return (
-    <div>
+    <div className="home-page">
       <header className="hero text-center">
-        <div className="hero-toggle">
-          <ThemeToggle />
-        </div>
         <h1 className="mb-2">考公速算训练营</h1>
-        <p>资料分析速算专项 · 逐题计时 · 自动判分</p>
+        <p>资料分析速算专项 · 逐题计时 · 自动判分 · 支持回看与跳题</p>
       </header>
 
       <section className="panel mt-4">
@@ -66,9 +65,26 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* 套卷模式：整卷固定 34 题，分模块出题 */}
+      <section className="mt-4">
+        <button type="button" className="exam-banner w-100" onClick={startExam}>
+          <span className={`cat-icon ${EXAM_CATEGORY.tint}`}>
+            <i className={`bi ${EXAM_CATEGORY.icon}`} />
+          </span>
+          <span className="exam-banner-body">
+            <span className="cat-title d-block">{EXAM_CATEGORY.title}</span>
+            <span className="cat-desc d-block">{EXAM_CATEGORY.desc}</span>
+          </span>
+          <span className="exam-banner-cta">
+            开始考试
+            <i className="bi bi-chevron-right ms-1" />
+          </span>
+        </button>
+      </section>
+
       <section className="row g-3 mt-1">
         {CATEGORIES.map((c) => (
-          <div className="col-12 col-md-6" key={c.type}>
+          <div className="col-12 col-md-6 col-xl-4" key={c.type}>
             <button
               type="button"
               className="cat-card w-100"
@@ -88,8 +104,10 @@ export default function HomePage() {
       </section>
 
       <footer className="text-center text-muted small mt-5">
-        加减法须完全准确 · 其余填空题允许 1% 以内误差 · 比大小点击按钮直接提交
+        加减法须完全准确 · 其余填空题允许 1% 以内误差 · 选择/比大小可先跳过稍后补答 · 交卷前会提醒未答题目
       </footer>
+
+      <ThemeToggle />
     </div>
   )
 }

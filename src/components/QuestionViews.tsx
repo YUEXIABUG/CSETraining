@@ -1,20 +1,17 @@
-import { useState, type KeyboardEvent, type ReactNode } from 'react'
-import type { BasePeriodQuestion, FractionQuestion } from '../types'
+import type { KeyboardEvent, ReactNode } from 'react'
+import type { BasePeriodQuestion, BasePeriodShareQuestion, FractionQuestion, ShareGapQuestion } from '../types'
 
 interface NumericViewProps {
   children: ReactNode
   hint?: string
-  onAnswer: (text: string) => void
+  value: string
+  onChange: (v: string) => void
+  /** 回车键触发的主操作（下一题 / 提交） */
+  onEnter: () => void
 }
 
 /** 填空类题目（加减法 / 乘法）：大字号算式 + 输入框 */
-export function NumericQuestionView({ children, hint, onAnswer }: NumericViewProps) {
-  const [value, setValue] = useState('')
-  const empty = value.trim() === ''
-  const submit = () => {
-    if (empty) return
-    onAnswer(value.trim())
-  }
+export function NumericQuestionView({ children, hint, value, onChange, onEnter }: NumericViewProps) {
   return (
     <div className="text-center fade-in">
       <div className="question-expr">{children}</div>
@@ -27,14 +24,11 @@ export function NumericQuestionView({ children, hint, onAnswer }: NumericViewPro
           className="form-control form-control-lg answer-input"
           placeholder="输入答案"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter') submit()
+            if (e.key === 'Enter') onEnter()
           }}
         />
-        <button type="button" className="btn btn-primary btn-lg px-4" disabled={empty} onClick={submit}>
-          提交
-        </button>
       </div>
       <div className="hint-text mt-3">{hint ?? '允许 1% 以内的误差 · 回车键快速提交'}</div>
     </div>
@@ -50,13 +44,15 @@ function FractionDisplay({ n, d }: { n: number; d: number }) {
   )
 }
 
-/** 分数比大小：两个分数 + ＞ / ＜ 按钮 */
+/** 分数比大小：两个分数 + ＞ / ＜ 按钮（选中后可修改，由外部统一提交） */
 export function FractionView({
   q,
-  onAnswer,
+  selected,
+  onSelect,
 }: {
   q: FractionQuestion
-  onAnswer: (rel: '>' | '<') => void
+  selected?: '>' | '<'
+  onSelect: (rel: '>' | '<') => void
 }) {
   return (
     <div className="text-center fade-in">
@@ -66,14 +62,24 @@ export function FractionView({
         <FractionDisplay n={q.right.n} d={q.right.d} />
       </div>
       <div className="d-flex justify-content-center gap-4 mt-4 flex-wrap">
-        <button type="button" className="cmp-btn" onClick={() => onAnswer('>')} title="左边分数更大">
+        <button
+          type="button"
+          className={`cmp-btn ${selected === '>' ? 'selected' : ''}`}
+          onClick={() => onSelect('>')}
+          title="左边分数更大"
+        >
           ＞<small>左边更大</small>
         </button>
-        <button type="button" className="cmp-btn" onClick={() => onAnswer('<')} title="右边分数更大">
+        <button
+          type="button"
+          className={`cmp-btn ${selected === '<' ? 'selected' : ''}`}
+          onClick={() => onSelect('<')}
+          title="右边分数更大"
+        >
           ＜<small>右边更大</small>
         </button>
       </div>
-      <div className="hint-text mt-3">比较两个分数的大小（分子 ÷ 分母）</div>
+      <div className="hint-text mt-3">比较两个分数的大小（分子 ÷ 分母）· 点击选项后可修改</div>
     </div>
   )
 }
@@ -81,20 +87,21 @@ export function FractionView({
 /** 基期与增长量：同时填写基期量和增长量 */
 export function BasePeriodView({
   q,
-  onAnswer,
+  base,
+  growth,
+  onBase,
+  onGrowth,
+  onEnter,
 }: {
   q: BasePeriodQuestion
-  onAnswer: (baseText: string, growthText: string) => void
+  base: string
+  growth: string
+  onBase: (v: string) => void
+  onGrowth: (v: string) => void
+  onEnter: () => void
 }) {
-  const [base, setBase] = useState('')
-  const [growth, setGrowth] = useState('')
-  const ready = base.trim() !== '' && growth.trim() !== ''
-  const submit = () => {
-    if (!ready) return
-    onAnswer(base.trim(), growth.trim())
-  }
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') submit()
+    if (e.key === 'Enter') onEnter()
   }
   return (
     <div className="fade-in">
@@ -117,7 +124,7 @@ export function BasePeriodView({
             className="form-control form-control-lg answer-input"
             placeholder="输入基期量"
             value={base}
-            onChange={(e) => setBase(e.target.value)}
+            onChange={(e) => onBase(e.target.value)}
             onKeyDown={onKeyDown}
           />
         </label>
@@ -130,17 +137,68 @@ export function BasePeriodView({
             className="form-control form-control-lg answer-input"
             placeholder="输入增长量"
             value={growth}
-            onChange={(e) => setGrowth(e.target.value)}
+            onChange={(e) => onGrowth(e.target.value)}
             onKeyDown={onKeyDown}
           />
         </label>
       </div>
-      <div className="text-center mt-4">
-        <button type="button" className="btn btn-primary btn-lg px-4" disabled={!ready} onClick={submit}>
-          提交
-        </button>
+      <div className="hint-text mt-3 text-center">两项均允许 1% 以内的误差 · 增长量可为负</div>
+    </div>
+  )
+}
+
+const LETTERS = ['A', 'B', 'C', 'D']
+
+/** 基期比重 / 比重差选择题：题干 + A/B/C/D 四个选项 */
+export function ChoiceView({
+  q,
+  selected,
+  onSelect,
+}: {
+  q: BasePeriodShareQuestion | ShareGapQuestion
+  selected?: number
+  onSelect: (i: number) => void
+}) {
+  const isGap = q.type === 'sharegap'
+  return (
+    <div className="fade-in">
+      <div className="choice-prompt text-center">
+        <div>
+          现期部分 <strong>A = {q.part}</strong>
+          <span className="mx-2">，</span>
+          现期整体 <strong>B = {q.total}</strong>
+        </div>
+        <div className="mt-1">
+          部分增长率{' '}
+          <strong>
+            r<sub>A</sub> = {q.ra}%
+          </strong>
+          <span className="mx-2">，</span>
+          整体增长率{' '}
+          <strong>
+            r<sub>B</sub> = {q.rb}%
+          </strong>
+        </div>
+        <div className="choice-question mt-2">{isGap ? '则现期比重与基期比重相比（比重差）为？' : '则基期比重约为？'}</div>
       </div>
-      <div className="hint-text mt-3 text-center">两项均允许 1% 以内的误差 · 回车键快速提交</div>
+      <div className="choice-options mt-4">
+        {q.options.map((opt, i) => (
+          <button
+            key={i}
+            type="button"
+            className={`choice-opt ${selected === i ? 'selected' : ''}`}
+            onClick={() => onSelect(i)}
+          >
+            <span className="choice-letter">{LETTERS[i]}</span>
+            <span className="choice-text">{opt}</span>
+          </button>
+        ))}
+      </div>
+      <div className="hint-text mt-3 text-center">
+        {isGap
+          ? '比重差 = (A ÷ B) × (rA − rB) ÷ (1 + rA)，rA ＞ rB 时比重上升'
+          : '基期比重 = (A ÷ B) × (1 + rB) ÷ (1 + rA)'}
+      </div>
     </div>
   )
 }

@@ -1,5 +1,8 @@
 import type { AnswerRecord, Question } from '../types'
 import { addSubExpression, formatNumber } from '../utils/display'
+import { fmtTrim } from '../utils/generators'
+
+const LETTERS = ['A', 'B', 'C', 'D']
 
 /** 成绩单中的小号分数展示（分子 / 分数线 / 分母） */
 export function FractionInline({ n, d }: { n: number; d: number }) {
@@ -33,7 +36,14 @@ export function SummaryCell({ q }: { q: Question }) {
     case 'baseperiod':
       return (
         <span className="summary-cell">
-          A = {q.amount}，B = {q.percent}%
+          A = {q.amount}，增长率 = {q.percent}%
+        </span>
+      )
+    case 'baseperiodshare':
+    case 'sharegap':
+      return (
+        <span className="summary-cell">
+          A = {q.part}，B = {q.total}，r<sub>A</sub> = {q.ra}%，r<sub>B</sub> = {q.rb}%
         </span>
       )
   }
@@ -42,6 +52,7 @@ export function SummaryCell({ q }: { q: Question }) {
 /** 我的答案列 */
 export function UserAnswerCell({ q, r }: { q: Question; r?: AnswerRecord }) {
   if (!r) return <>—</>
+  if (r.skipped || r.userText === '') return <span className="text-muted">未作答</span>
   if (q.type === 'baseperiod' && r.parts) {
     return (
       <div className="cell-stack">
@@ -90,19 +101,49 @@ export function CorrectAnswerCell({ q }: { q: Question }) {
       return (
         <div className="cell-stack">
           <div>
-            基期量 = {q.amount} ÷ (1 + {q.percent}%) ≈ {Math.round(q.baseAnswer)}
+            基期量 = {q.amount} ÷ (1 {q.percent >= 0 ? '+' : '−'} {Math.abs(q.percent)}%) ≈{' '}
+            {formatNumber(Math.round(q.baseAnswer * 100) / 100)}
           </div>
           <div>
-            增长量 = {q.amount} − {q.amount} ÷ (1 + {q.percent}%) ≈ {Math.round(q.growthAnswer)}
+            增长量 = {q.amount} − 基期量 ≈ {formatNumber(Math.round(q.growthAnswer * 100) / 100)}
           </div>
         </div>
       )
+    case 'baseperiodshare':
+      return (
+        <div className="cell-stack">
+          <div>
+            基期比重 = ({q.part} ÷ {q.total}) × (1 {q.rb >= 0 ? '+' : '−'} {Math.abs(q.rb)}%) ÷ (1{' '}
+            {q.ra >= 0 ? '+' : '−'} {Math.abs(q.ra)}%) ≈ <strong>{q.answer.toFixed(2)}%</strong>
+          </div>
+          <div className="text-muted small">正确选项：{LETTERS[q.correctIndex]}</div>
+        </div>
+      )
+    case 'sharegap': {
+      const rising = q.ra > q.rb
+      return (
+        <div className="cell-stack">
+          <div>
+            比重差 = ({q.part} ÷ {q.total}) × ({fmtTrim(q.ra)}% {rising ? '+' : '−'}{' '}
+            {fmtTrim(Math.abs(q.ra - q.rb))}%) ÷ (1 {q.ra >= 0 ? '+' : '−'} {Math.abs(q.ra)}%) ≈{' '}
+            <strong>
+              {rising ? '上升' : '下降'} {fmtTrim(Math.abs(q.answer))} 个百分点
+            </strong>
+          </div>
+          <div className="text-muted small">
+            部分增速 r<sub>A</sub> {rising ? '＞' : '＜'} 整体增速 r<sub>B</sub>，故比重{rising ? '上升' : '下降'} · 正确选项：
+            {LETTERS[q.correctIndex]}
+          </div>
+        </div>
+      )
+    }
   }
 }
 
-/** 结果列：基期与增长量分别标注对错 */
+/** 结果列 */
 export function ResultCell({ q, r }: { q: Question; r?: AnswerRecord }) {
   if (!r) return <>—</>
+  if (r.skipped || r.userText === '') return <span className="mark-skipped">○ 未答</span>
   if (q.type === 'baseperiod' && r.parts) {
     return (
       <div className="cell-stack">
@@ -116,4 +157,14 @@ export function ResultCell({ q, r }: { q: Question; r?: AnswerRecord }) {
     )
   }
   return r.correct ? <span className="mark-correct">✓ 正确</span> : <span className="mark-wrong">✗ 错误</span>
+}
+
+/** 成绩单记录卡片左侧的状态徽标 */
+export function ResultBadge({ r }: { r?: AnswerRecord }) {
+  if (!r || r.skipped || r.userText === '') return <span className="record-badge badge-skipped">未答</span>
+  return r.correct ? (
+    <span className="record-badge badge-correct">答对</span>
+  ) : (
+    <span className="record-badge badge-wrong">答错</span>
+  )
 }
