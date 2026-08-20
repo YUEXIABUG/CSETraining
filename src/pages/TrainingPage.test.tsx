@@ -65,10 +65,10 @@ vi.mock('../utils/generators', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../utils/generators')>()
   return {
     ...actual,
-    generateSet: (type: QuestionType) => {
+    generateSet: (type: QuestionType, count: number) => {
       if (type === 'baseperiod') return [BQ1]
       if (type === 'addsub') return [ASQ1]
-      if (type === 'fraction') return [FQ1]
+      if (type === 'fraction') return Array.from({ length: count }, () => FQ1)
       if (type === 'baseperiodshare') return [BPS1]
       if (type === 'sharegap') return [SG1]
       if (type === 'exam') return actual.generateExam()
@@ -222,6 +222,20 @@ describe('TrainingPage 跳题与回看', () => {
     fireEvent.click(screen.getByTitle('左边分数更大'))
     fireEvent.click(screen.getByText('提交'))
     expect(screen.getByText(/正确率（1\/1）/)).toBeTruthy()
+  })
+
+  it('选择题点击选项后自动跳转下一题，末题点选项不跳转', () => {
+    renderTraining('/train/fraction?count=2')
+
+    // 第 1 题点击「＞」后自动跳到第 2 题
+    fireEvent.click(screen.getByTitle('左边分数更大'))
+    expect(screen.getByText(/第 2 \/ 2 题/)).toBeTruthy()
+
+    // 第 2 题（末题）点选项仅记录、不跳转，显示提交
+    fireEvent.click(screen.getByTitle('左边分数更大'))
+    expect(screen.getByText('提交')).toBeTruthy()
+    fireEvent.click(screen.getByText('提交'))
+    expect(screen.getByText(/正确率（2\/2）/)).toBeTruthy()
   })
 
   it('答题中点击返回需确认，确认后回首页', () => {

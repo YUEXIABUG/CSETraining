@@ -134,6 +134,12 @@ export default function TrainingPage() {
     })
   }
 
+  /** 选择题：记录选项后自动跳转下一题（末题仅记录，不自动提交） */
+  const handleChoiceSelect = (patch: Partial<Draft>) => {
+    patchDraft(patch)
+    if (index < questions.length - 1) goTo(index + 1)
+  }
+
   const buildRecords = (ds: Draft[]): AnswerRecord[] =>
     questions.map((q, i) => {
       const d = ds[i] ?? {}
@@ -459,16 +465,17 @@ export default function TrainingPage() {
         </div>
       </div>
 
-      <section className="panel progress-panel mt-3">
-        <div className="progress-head">
-          <span className="progress-title">
-            <i className="bi bi-signpost-split me-2" />
-            答题进度
-          </span>
-          <span className="text-muted small fw-semibold">
+      <div className="quiz-body">
+        <aside className="quiz-axis panel" aria-label="答题进度">
+          <div className="axis-head">
+            <span className="progress-title">
+              <i className="bi bi-signpost-split me-2" />
+              答题进度
+            </span>
+          </div>
+          <div className="axis-count text-muted small">
             第 {index + 1} / {questions.length} 题 · 本题 {formatMsShort(qMs)}
-          </span>
-        </div>
+          </div>
         {qType === 'exam' ? (
           <div className="progress-modules">
             {moduleRanges.map((r) => (
@@ -504,8 +511,9 @@ export default function TrainingPage() {
             未看
           </span>
         </div>
-      </section>
+        </aside>
 
+        <div className="quiz-main">
       <div className="quiz-card">
         {question?.type === 'addsub' && (
           <NumericQuestionView
@@ -544,7 +552,7 @@ export default function TrainingPage() {
             key={index}
             q={question}
             selected={draft.relation}
-            onSelect={(rel) => patchDraft({ relation: rel })}
+            onSelect={(rel) => handleChoiceSelect({ relation: rel })}
           />
         )}
         {question?.type === 'baseperiod' && (
@@ -563,7 +571,7 @@ export default function TrainingPage() {
             key={index}
             q={question}
             selected={draft.choiceIndex}
-            onSelect={(i) => patchDraft({ choiceIndex: i })}
+            onSelect={(i) => handleChoiceSelect({ choiceIndex: i })}
           />
         )}
       </div>
@@ -595,6 +603,8 @@ export default function TrainingPage() {
               <i className="bi bi-chevron-right ms-1" />
             </button>
           )}
+        </div>
+      </div>
         </div>
       </div>
 
