@@ -124,8 +124,8 @@ export function CorrectAnswerCell({ q }: { q: Question }) {
       return (
         <div className="cell-stack">
           <div>
-            比重差 = ({q.part} ÷ {q.total}) × ({fmtTrim(q.ra)}% {rising ? '+' : '−'}{' '}
-            {fmtTrim(Math.abs(q.ra - q.rb))}%) ÷ (1 {q.ra >= 0 ? '+' : '−'} {Math.abs(q.ra)}%) ≈{' '}
+            比重差 = ({q.part} ÷ {q.total}) × ({fmtTrim(q.ra)}% {q.rb >= 0 ? '−' : '+'}{' '}
+            {fmtTrim(Math.abs(q.rb))}%) ÷ (1 {q.ra >= 0 ? '+' : '−'} {Math.abs(q.ra)}%) ≈{' '}
             <strong>
               {rising ? '上升' : '下降'} {fmtTrim(Math.abs(q.answer))} 个百分点
             </strong>

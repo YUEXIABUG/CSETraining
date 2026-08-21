@@ -105,4 +105,29 @@ describe('StatsPage', () => {
     fireEvent.change(input, { target: { files: [file] } })
     expect(await screen.findByText(/导入失败/)).toBeTruthy()
   })
+
+  it('删除历史数据：点击后弹出确认提醒，取消则记录保留', () => {
+    seed([rec(0, 8), rec(1, 9)])
+    renderStats()
+
+    fireEvent.click(screen.getByText('删除历史数据'))
+    expect(screen.getByText('确认删除全部成绩？')).toBeTruthy()
+    expect(screen.getByText(/无法恢复/)).toBeTruthy()
+
+    fireEvent.click(screen.getByText('取消'))
+    expect(screen.queryByText('确认删除全部成绩？')).toBeNull()
+    expect(screen.getByText('共 2 次练习')).toBeTruthy()
+    expect(JSON.parse(localStorage.getItem('cse-training-history')!)).toHaveLength(2)
+  })
+
+  it('删除历史数据：确认后清空全部记录并回到空状态', () => {
+    seed([rec(0, 8), rec(1, 9)])
+    renderStats()
+
+    fireEvent.click(screen.getByText('删除历史数据'))
+    fireEvent.click(screen.getByText('确认删除'))
+
+    expect(screen.getByText('还没有练习记录')).toBeTruthy()
+    expect(localStorage.getItem('cse-training-history')).toBeNull()
+  })
 })

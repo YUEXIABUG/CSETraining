@@ -105,15 +105,21 @@ describe('genBasePeriod 基期与增长量', () => {
 })
 
 describe('genBasePeriodShare 基期比重选择题', () => {
-  it('A<B 四位整数，增长率 ±20% 一位小数，答案符合公式且选项格式统一', () => {
+  it('B 比 A 大 10%~30%，增长率 ±20% 一位小数且至少相差 5 个百分点，答案符合公式且选项格式统一', () => {
     for (let i = 0; i < 200; i++) {
       const q = genBasePeriodShare()
       expect(q.part).toBeGreaterThanOrEqual(1000)
-      expect(q.part).toBeLessThanOrEqual(8999)
+      expect(q.part).toBeLessThanOrEqual(7691)
       expect(q.total).toBeGreaterThan(q.part)
       expect(q.total).toBeLessThanOrEqual(9999)
+      // B 比 A 大 10%~30%
+      const gap = (q.total - q.part) / q.part
+      expect(gap).toBeGreaterThanOrEqual(0.1 - 1e-9)
+      expect(gap).toBeLessThanOrEqual(0.3 + 1e-9)
       expect(Math.abs(q.ra)).toBeLessThanOrEqual(20)
       expect(Math.abs(q.rb)).toBeLessThanOrEqual(20)
+      // 两个增长率至少相差 5 个百分点
+      expect(Math.abs(q.ra - q.rb)).toBeGreaterThanOrEqual(5 - 1e-9)
       // 一位小数
       expect(Math.abs(q.ra * 10 - Math.round(q.ra * 10))).toBeLessThan(1e-9)
       expect(Math.abs(q.rb * 10 - Math.round(q.rb * 10))).toBeLessThan(1e-9)
@@ -144,13 +150,19 @@ describe('genShareGap 比重差选择题', () => {
     return { dir: m![1], val: Number.parseFloat(m![2]) }
   }
 
-  it('方向与数值符合公式，选项结构 A/C 上升、B/D 下降，两组数值相差 20% 以内', () => {
+  it('B 比 A 大 10%~30%，增长率至少相差 5 个百分点，方向与数值符合公式，两组数值相差 20% 以内', () => {
     for (let i = 0; i < 200; i++) {
       const q = genShareGap()
       expect(q.part).toBeGreaterThanOrEqual(1000)
+      expect(q.part).toBeLessThanOrEqual(7691)
       expect(q.total).toBeGreaterThan(q.part)
       expect(q.total).toBeLessThanOrEqual(9999)
-      expect(q.ra).not.toBe(q.rb)
+      // B 比 A 大 10%~30%
+      const gap = (q.total - q.part) / q.part
+      expect(gap).toBeGreaterThanOrEqual(0.1 - 1e-9)
+      expect(gap).toBeLessThanOrEqual(0.3 + 1e-9)
+      // 两个增长率至少相差 5 个百分点
+      expect(Math.abs(q.ra - q.rb)).toBeGreaterThanOrEqual(5 - 1e-9)
       expect(q.options).toHaveLength(4)
       const opts = q.options.map(parse)
       // A/C 上升，B/D 下降

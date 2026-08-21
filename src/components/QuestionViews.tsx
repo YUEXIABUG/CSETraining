@@ -179,7 +179,7 @@ export function ChoiceView({
             r<sub>B</sub> = {q.rb}%
           </strong>
         </div>
-        <div className="choice-question mt-2">{isGap ? '则现期比重与基期比重相比（比重差）为？' : '则基期比重约为？'}</div>
+        <div className="choice-question mt-2">{isGap ? '则比重差为？' : '则基期比重约为？'}</div>
       </div>
       <div className="choice-options mt-4">
         {q.options.map((opt, i) => (

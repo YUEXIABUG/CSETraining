@@ -115,18 +115,36 @@ export function genBasePeriod(minPct = -15, maxPct = 100): BasePeriodQuestion {
   return { type: 'baseperiod', amount, percent, baseAnswer, growthAnswer }
 }
 
+/** 现期部分 A 与现期整体 B：B 比 A 大 10%~30%，且均为四位整数 */
+function genPartTotal(): { part: number; total: number } {
+  // part ≤ 7691 时 part × 1.3 < 10000，保证 B 仍是四位整数
+  const part = randInt(1000, 7691)
+  const diff = randInt(Math.ceil(part * 0.1), Math.floor(part * 0.3))
+  return { part, total: part + diff }
+}
+
+/** 部分 / 整体增长率：±20% 内一位小数，且两者至少相差 5 个百分点 */
+function genGrowthRates(): { ra: number; rb: number } {
+  let a: number
+  let b: number
+  do {
+    a = randInt(-200, 200)
+    b = randInt(-200, 200)
+  } while (Math.abs(a - b) < 50)
+  return { ra: a / 10, rb: b / 10 }
+}
+
 /**
  * 基期比重选择题：
  * 基期比重 = (A / B) × (1 + Rb) / (1 + Ra)，
- * A 为现期部分、B 为现期整体、Ra / Rb 为部分 / 整体增长率。
+ * A 为现期部分、B 为现期整体（B 比 A 大 10%~30%），
+ * Ra / Rb 为部分 / 整体增长率（±20% 内一位小数，至少相差 5 个百分点）。
  * 四个选项为位数一致、至多两位小数的百分比。
  */
 export function genBasePeriodShare(): BasePeriodShareQuestion {
   for (let attempt = 0; attempt < 400; attempt++) {
-    const part = randInt(1000, 8999)
-    const total = randInt(part + 100, 9999)
-    const ra = randInt(-200, 200) / 10 // -20.0% ~ 20.0%
-    const rb = randInt(-200, 200) / 10
+    const { part, total } = genPartTotal()
+    const { ra, rb } = genGrowthRates()
     const baseShare = (part / total) * ((1 + rb / 100) / (1 + ra / 100)) * 100
     const correct = round2(baseShare)
     if (correct <= 0.5 || correct >= 99.5) continue
@@ -164,32 +182,28 @@ export function genBasePeriodShare(): BasePeriodShareQuestion {
   // 理论上几乎不可达的兜底
   return {
     type: 'baseperiodshare',
-    part: 2000,
-    total: 5000,
+    part: 4000,
+    total: 4800,
     ra: 10,
     rb: 5,
-    options: ['38.18%', '40.00%', '36.36%', '42.11%'],
+    options: ['79.55%', '83.33%', '87.30%', '75.12%'],
     correctIndex: 0,
-    answer: 38.18,
+    answer: 79.55,
   }
 }
 
 /**
  * 比重差选择题：
  * 比重差 = (A / B) × (Ra − Rb) / (1 + Ra)（百分点），
- * Ra > Rb 时比重上升，反之下降。
+ * B 比 A 大 10%~30%，增长率至少相差 5 个百分点，Ra > Rb 时比重上升，反之下降。
  * 选项结构：A 上升 V1 / B 下降 V1 / C 上升 V2 / D 下降 V2，V1 与 V2 相差 20% 以内。
  */
 export function genShareGap(): ShareGapQuestion {
   for (let attempt = 0; attempt < 400; attempt++) {
-    const part = randInt(1000, 8999)
-    const total = randInt(part + 100, 9999)
-    const ra = randInt(-200, 200) / 10
-    const rb = randInt(-200, 200) / 10
-    if (ra === rb) continue // 比重差为 0，方向无意义
+    const { part, total } = genPartTotal()
+    const { ra, rb } = genGrowthRates()
     const gapPp = (part / total) * ((ra - rb) / (1 + ra / 100))
     const value = round2(Math.abs(gapPp))
-    if (value < 0.05) continue
     // 生成另一个与 value 相差 20% 以内的干扰数值（对舍入后的值做校验）
     const withinGap = (a: number, b: number) => Math.abs(a - b) / Math.max(a, b) <= 0.2
     let other = value
@@ -223,13 +237,13 @@ export function genShareGap(): ShareGapQuestion {
   }
   return {
     type: 'sharegap',
-    part: 2125,
-    total: 3640,
+    part: 3000,
+    total: 3750,
     ra: 18.7,
-    rb: 28.2,
-    options: ['上升 4.67 个百分点', '下降 4.67 个百分点', '上升 5.13 个百分点', '下降 5.13 个百分点'],
-    correctIndex: 1,
-    answer: -4.67,
+    rb: 8.2,
+    options: ['上升 7.08 个百分点', '下降 7.08 个百分点', '上升 7.93 个百分点', '下降 7.93 个百分点'],
+    correctIndex: 0,
+    answer: 7.08,
   }
 }
 

@@ -6,6 +6,7 @@ import { CATEGORIES, EXAM_CATEGORY, categoryOf } from '../meta'
 import type { QuestionType } from '../types'
 import { formatDateTime, formatMs, formatMsShort } from '../utils/display'
 import {
+  clearHistory,
   exportHistoryJson,
   loadHistory,
   mergeImportJson,
@@ -94,6 +95,7 @@ export default function StatsPage() {
   const navigate = useNavigate()
   const [history, setHistory] = useState(loadHistory)
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
+  const [confirmClear, setConfirmClear] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const totalQuestions = history.reduce((s, r) => s + r.count, 0)
@@ -140,6 +142,12 @@ export default function StatsPage() {
         text: e instanceof Error ? `导入失败：${e.message}` : '导入失败，请选择本站导出的 JSON 文件',
       })
     }
+  }
+
+  const handleClear = () => {
+    clearHistory()
+    setHistory([])
+    setConfirmClear(false)
   }
 
   return (
@@ -272,6 +280,10 @@ export default function StatsPage() {
                 <i className="bi bi-download me-1" />
                 导入成绩
               </button>
+              <button type="button" className="btn btn-outline-danger" onClick={() => setConfirmClear(true)}>
+                <i className="bi bi-trash3 me-1" />
+                删除历史数据
+              </button>
               <input
                 ref={fileRef}
                 type="file"
@@ -290,6 +302,28 @@ export default function StatsPage() {
             )}
           </section>
         </>
+      )}
+
+      {confirmClear && (
+        <div className="modal-overlay" onClick={() => setConfirmClear(false)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">
+              <i className="bi bi-exclamation-triangle me-2" />
+              确认删除全部成绩？
+            </div>
+            <div className="modal-body">
+              将删除本机保存的 {history.length} 条练习记录，且无法恢复。如需保留，请先「导出成绩」备份。
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline-secondary" onClick={() => setConfirmClear(false)}>
+                取消
+              </button>
+              <button type="button" className="btn btn-danger" onClick={handleClear}>
+                确认删除
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       <ThemeToggle />

@@ -134,6 +134,15 @@ export function appendSession(
   return rec
 }
 
+/** 清空全部历史记录 */
+export function clearHistory(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY)
+  } catch {
+    /* 隐私模式等场景下忽略存储失败 */
+  }
+}
+
 /** 导出为 JSON 字符串（用于下载备份 / 跨设备转移） */
 export function exportHistoryJson(): string {
   const payload: HistoryExport = {

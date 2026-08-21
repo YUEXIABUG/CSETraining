@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import {
   appendSession,
+  clearHistory,
   exportHistoryJson,
   loadHistory,
   mergeImportJson,
@@ -50,6 +51,17 @@ describe('history 本地存储', () => {
     expect(loadHistory()).toHaveLength(0)
     localStorage.setItem(KEY, '{"not":"array"}')
     expect(loadHistory()).toHaveLength(0)
+  })
+})
+
+describe('清空', () => {
+  it('清空后本地无任何记录', () => {
+    appendSession(base)
+    appendSession({ ...base, type: 'fraction' })
+    expect(loadHistory()).toHaveLength(2)
+    clearHistory()
+    expect(loadHistory()).toHaveLength(0)
+    expect(localStorage.getItem(KEY)).toBeNull()
   })
 })
 

@@ -274,6 +274,16 @@ describe('TrainingPage 新选择题型', () => {
     fireEvent.click(screen.getByText('提交'))
     expect(screen.getByText(/正确率（1\/1）/)).toBeTruthy()
   })
+
+  it('比重差成绩单：计算过程展示与公式 (A÷B)×(rA−rB)÷(1+rA) 一致', () => {
+    renderTraining('/train/sharegap?count=1')
+    fireEvent.click(screen.getByText('下降 4.67 个百分点'))
+    fireEvent.click(screen.getByText('提交'))
+    const text = document.body.textContent ?? ''
+    // SG1：rB 为正时展示为 (rA% − rB%)，分母为 (1 + rA%)
+    expect(text).toContain('(2125 ÷ 3640) × (18.7% − 28.2%) ÷ (1 + 18.7%)')
+    expect(text).toContain('下降 4.67 个百分点')
+  })
 })
 
 describe('TrainingPage 成绩记录与进度样式', () => {
