@@ -275,3 +275,47 @@ describe('TrainingPage 新选择题型', () => {
     expect(screen.getByText(/正确率（1\/1）/)).toBeTruthy()
   })
 })
+
+describe('TrainingPage 成绩记录与进度样式', () => {
+  it('交卷后将本次成绩写入本地记录', () => {
+    localStorage.removeItem('cse-training-history')
+    renderTraining('/train/multiply?count=2')
+
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '100' } })
+    fireEvent.click(screen.getByText('下一题'))
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '100' } })
+    fireEvent.click(screen.getByText('提交'))
+
+    const raw = localStorage.getItem('cse-training-history')
+    expect(raw).toBeTruthy()
+    const records = JSON.parse(raw!)
+    expect(records).toHaveLength(1)
+    expect(records[0]).toMatchObject({
+      type: 'multiply',
+      count: 2,
+      correct: 2,
+      wrong: 0,
+      skipped: 0,
+    })
+    expect(records[0].timeMs).toBeGreaterThanOrEqual(0)
+  })
+
+  it('已答 / 看过的进度圆圈显示荧光笔涂抹标记', () => {
+    const { container } = renderTraining('/train/multiply?count=2')
+
+    // 初始：第 1 题正在显示（看了没答），其圆圈有一个红色标记；图例常驻两个示例标记
+    expect(container.querySelectorAll('.prog-chip .chip-mark')).toHaveLength(1)
+    expect(container.querySelectorAll('.prog-chip.st-viewed .chip-mark')).toHaveLength(1)
+    expect(container.querySelectorAll('.legend-chip .chip-mark')).toHaveLength(2)
+
+    // 第 1 题作答后跳到第 2 题：第 1 题绿色标记，第 2 题红色标记
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '100' } })
+    fireEvent.click(screen.getByText('下一题'))
+    expect(container.querySelectorAll('.prog-chip .chip-mark')).toHaveLength(2)
+    expect(container.querySelectorAll('.prog-chip.st-answered .chip-mark')).toHaveLength(1)
+
+    // 直接点提交触发未答提醒：第 2 题仍是「看了没答」红色标记
+    fireEvent.click(screen.getByText('提交'))
+    expect(container.querySelectorAll('.prog-chip.st-viewed .chip-mark')).toHaveLength(1)
+  })
+})

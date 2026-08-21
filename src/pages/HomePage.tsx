@@ -65,6 +65,25 @@ export default function HomePage() {
         </div>
       </section>
 
+      <section className="home-links mt-4">
+        <button type="button" className="home-link" onClick={() => navigate('/stats')}>
+          <i className="bi bi-trophy" />
+          <span className="home-link-body">
+            <span className="d-block">我的成绩</span>
+            <span className="home-link-sub">历次练习统计 · 进步趋势 · 数据迁移</span>
+          </span>
+          <i className="bi bi-chevron-right home-link-go" />
+        </button>
+        <button type="button" className="home-link" onClick={() => navigate('/about')}>
+          <i className="bi bi-info-circle" />
+          <span className="home-link-body">
+            <span className="d-block">关于本站</span>
+            <span className="home-link-sub">功能介绍 · 全程离线 · 数据仅存本机</span>
+          </span>
+          <i className="bi bi-chevron-right home-link-go" />
+        </button>
+      </section>
+
       {/* 套卷模式：整卷固定 34 题，分模块出题 */}
       <section className="mt-4">
         <button type="button" className="exam-banner w-100" onClick={startExam}>
@@ -73,7 +92,6 @@ export default function HomePage() {
           </span>
           <span className="exam-banner-body">
             <span className="cat-title d-block">{EXAM_CATEGORY.title}</span>
-            <span className="cat-desc d-block">{EXAM_CATEGORY.desc}</span>
           </span>
           <span className="exam-banner-cta">
             开始考试
@@ -95,7 +113,6 @@ export default function HomePage() {
               </span>
               <span className="cat-body">
                 <span className="cat-title d-block">{c.title}</span>
-                <span className="cat-desc d-block">{c.desc}</span>
               </span>
               <i className="bi bi-chevron-right cat-go" />
             </button>

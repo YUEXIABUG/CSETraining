@@ -19,6 +19,7 @@ import { categoryOf, isQuestionType } from '../meta'
 import type { AnswerRecord, Question, QuestionType } from '../types'
 import { formatMs, formatMsShort } from '../utils/display'
 import { examModuleRanges, generateSet, isWithinTolerance } from '../utils/generators'
+import { appendSession } from '../utils/history'
 
 /** 每题的草稿答案（切换题目时保留，可回看修改） */
 interface Draft {
@@ -53,6 +54,17 @@ function isAnswered(q: Question, d: Draft | undefined): boolean {
 }
 
 const LETTERS = ['A', 'B', 'C', 'D']
+
+/** 荧光笔涂抹标记：三笔半透明粗描边组成「Z」字，笔画交叠处颜色加深，笔锋略微画出圆圈 */
+function ChipMark({ color }: { color: string }) {
+  return (
+    <svg className="chip-mark" viewBox="0 0 36 36" aria-hidden="true">
+      <path d="M3.5 13.5 L32 10" fill="none" stroke={color} strokeWidth={9} strokeLinecap="round" strokeOpacity={0.5} />
+      <path d="M31 11 L5 26" fill="none" stroke={color} strokeWidth={9} strokeLinecap="round" strokeOpacity={0.5} />
+      <path d="M4 25 L32.5 23" fill="none" stroke={color} strokeWidth={9} strokeLinecap="round" strokeOpacity={0.5} />
+    </svg>
+  )
+}
 
 export default function TrainingPage() {
   const navigate = useNavigate()
@@ -196,8 +208,29 @@ export default function TrainingPage() {
     })
 
   const finishSubmit = (ds: Draft[]) => {
-    setRecords(buildRecords(ds))
+    const recs = buildRecords(ds)
+    setRecords(recs)
     setPhase('result')
+    appendSession({
+      type: qType,
+      count: questions.length,
+      correct: recs.filter((r) => !r.skipped && r.correct).length,
+      wrong: recs.filter((r) => !r.skipped && !r.correct).length,
+      skipped: recs.filter((r) => r.skipped).length,
+      timeMs: recs.reduce((s, r) => s + r.timeMs, 0),
+      ...(qType === 'exam'
+        ? {
+            modules: moduleRanges.map((m) => {
+              const sub = recs.slice(m.start, m.end)
+              return {
+                label: m.label,
+                correct: sub.filter((x) => !x.skipped && x.correct).length,
+                total: sub.length,
+              }
+            }),
+          }
+        : {}),
+    })
   }
 
   const beginSubmit = (ds: Draft[]) => {
@@ -429,7 +462,8 @@ export default function TrainingPage() {
   }
 
   const renderChip = (i: number) => {
-    const cls = ['prog-chip', `st-${statusOf(i)}`]
+    const st = statusOf(i)
+    const cls = ['prog-chip', `st-${st}`]
     if (i === index) cls.push('current')
     return (
       <button
@@ -439,7 +473,9 @@ export default function TrainingPage() {
         onClick={() => goTo(i)}
         title={`第 ${i + 1} 题 · 用时 ${formatMsShort(chipTime(i))}`}
       >
-        {i + 1}
+        {st === 'answered' && <ChipMark color="var(--ok)" />}
+        {st === 'viewed' && <ChipMark color="var(--bad)" />}
+        <span className="chip-no">{i + 1}</span>
       </button>
     )
   }
@@ -499,15 +535,19 @@ export default function TrainingPage() {
         )}
         <div className="progress-legend">
           <span>
-            <i className="legend-swatch lg-answered" />
+            <span className="legend-chip lg-answered">
+              <ChipMark color="var(--ok)" />
+            </span>
             已答
           </span>
           <span>
-            <i className="legend-swatch lg-viewed" />
+            <span className="legend-chip lg-viewed">
+              <ChipMark color="var(--bad)" />
+            </span>
             看了没答
           </span>
           <span>
-            <i className="legend-swatch lg-unseen" />
+            <span className="legend-chip lg-unseen" />
             未看
           </span>
         </div>

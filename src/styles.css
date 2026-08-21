@@ -31,8 +31,8 @@
   --chip-ink: #5c6470;
   --hover-bg: #f0f5ff;
   --progress-bg: #e3e6ec;
-  --ok: #16a34a;
-  --bad: #dc2626;
+  --ok: #42bd6fcb;
+  --bad: #f80303c9;
 
   /* 笔记纸张 */
   --paper: #fffdf8;
@@ -80,7 +80,7 @@
   --hover-bg: #182234;
   --progress-bg: #262e3a;
   --ok: #3fb950;
-  --bad: #f85149;
+  --bad: #dd635d;
 
   --paper: #10151c;
   --paper-dot: rgba(230, 237, 243, 0.06);
@@ -402,12 +402,6 @@ button {
 .cat-title {
   font-weight: 700;
   font-size: 1.05rem;
-}
-
-.cat-desc {
-  color: var(--muted);
-  font-size: 0.86rem;
-  margin: 0;
 }
 
 .cat-go {
@@ -1131,7 +1125,10 @@ button {
   max-width: 210px;
 }
 
+/* 题号圆圈：白底圆框 + 荧光笔 Z 字涂抹，不再整块铺色；
+   不裁剪溢出内容，让荧光笔笔锋可以画出圆圈 */
 .prog-chip {
+  position: relative;
   width: 34px;
   height: 34px;
   border-radius: 50%;
@@ -1142,8 +1139,9 @@ button {
   font-weight: 700;
   font-size: 0.8rem;
   font-variant-numeric: tabular-nums;
-  border: 2px solid transparent;
-  color: #fff;
+  border: 1.5px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--ink);
   cursor: pointer;
   transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
 }
@@ -1154,16 +1152,31 @@ button {
 }
 
 .prog-chip.st-answered {
-  background: var(--ok);
+  border-color: var(--ok);
 }
 
 .prog-chip.st-viewed {
-  background: var(--bad);
+  border-color: var(--bad);
 }
 
 .prog-chip.st-unseen {
   background: var(--progress-bg);
   color: var(--muted);
+}
+
+/* 荧光笔涂抹层：铺满圆圈，题号叠在其上；overflow 放开让笔锋画出圆圈 */
+.chip-mark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.chip-no {
+  position: relative;
+  z-index: 1;
 }
 
 .prog-chip.current {
@@ -1187,19 +1200,27 @@ button {
   gap: 6px;
 }
 
-.legend-swatch {
-  width: 13px;
-  height: 13px;
-  border-radius: 4px;
-  display: inline-block;
+/* 图例：缩小版的题号圆圈 */
+.legend-chip {
+  position: relative;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid var(--card-border);
+  background: var(--card-bg);
+  overflow: hidden;
+  flex-shrink: 0;
 }
 
 .lg-answered {
-  background: var(--ok);
+  border-color: var(--ok);
 }
 
 .lg-viewed {
-  background: var(--bad);
+  border-color: var(--bad);
 }
 
 .lg-unseen {
@@ -1713,5 +1734,286 @@ button {
   .theme-toggle {
     right: 16px;
     bottom: 16px;
+  }
+}
+
+/* ============================================================
+   首页：我的成绩 / 关于本站入口
+   ============================================================ */
+
+.home-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.home-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-radius: var(--radius-md);
+  border: 1.5px dashed var(--accent-border);
+  background: var(--accent-soft);
+  color: var(--ink);
+  text-align: left;
+  font-weight: 700;
+  transition: transform 0.15s ease, border-color 0.15s ease, background-color 0.25s ease;
+}
+
+.home-link:hover {
+  transform: translateY(-2px);
+  border-color: var(--primary);
+}
+
+.home-link > .bi-trophy,
+.home-link > .bi-info-circle {
+  font-size: 1.3rem;
+  color: var(--primary);
+  flex-shrink: 0;
+}
+
+.home-link-body {
+  min-width: 0;
+}
+
+.home-link-sub {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.home-link-go {
+  margin-left: auto;
+  color: var(--faint);
+  flex-shrink: 0;
+}
+
+.home-link:hover .home-link-go {
+  color: var(--primary);
+}
+
+/* ============================================================
+   我的成绩页
+   ============================================================ */
+
+/* 无记录时的空状态 */
+.empty-state {
+  padding: 56px 24px;
+}
+
+.empty-icon {
+  font-size: 2.6rem;
+  color: var(--faint);
+  display: block;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  margin-bottom: 20px;
+}
+
+/* 分模块统计行 */
+.type-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.type-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 14px;
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  transition: border-color 0.12s ease;
+}
+
+.type-stat-row:hover {
+  border-color: var(--accent-border);
+}
+
+.type-stat-icon {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+}
+
+.type-stat-title {
+  font-weight: 700;
+}
+
+.type-stat-meta {
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.type-stat-acc {
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: 1.05rem;
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+}
+
+/* 进步幅度标签 */
+.delta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-variant-numeric: tabular-nums;
+}
+
+.delta-up {
+  color: var(--ok);
+  background: var(--accent-soft);
+}
+
+.delta-down {
+  color: var(--bad);
+  background: var(--accent-soft);
+}
+
+.delta-flat {
+  color: var(--muted);
+  background: var(--chip-bg);
+}
+
+/* 练习记录列表 */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--chip-bg);
+  font-size: 0.88rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-date {
+  font-family: var(--font-mono);
+  color: var(--muted);
+  font-size: 0.8rem;
+  white-space: nowrap;
+}
+
+.history-type {
+  font-weight: 700;
+}
+
+.history-score {
+  color: var(--muted);
+}
+
+.history-skip {
+  font-style: normal;
+  font-size: 0.8rem;
+}
+
+.history-acc {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  margin-left: auto;
+}
+
+.history-time {
+  color: var(--muted);
+  font-size: 0.82rem;
+  white-space: nowrap;
+}
+
+/* 导入结果提示 */
+.import-notice {
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.notice-ok {
+  color: var(--ok);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+}
+
+.notice-err {
+  color: var(--bad);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+}
+
+/* ============================================================
+   关于页
+   ============================================================ */
+
+.about-text {
+  color: var(--muted);
+  margin-bottom: 12px;
+  line-height: 1.8;
+}
+
+.about-list {
+  margin: 0;
+  padding-left: 1.2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  line-height: 1.7;
+}
+
+.about-list li::marker {
+  color: var(--primary);
+}
+
+/* 隐私说明：便签风格的强调块 */
+.about-note {
+  background: var(--note-bg);
+  border: 1px solid var(--note-border);
+  color: var(--note-ink);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  line-height: 1.9;
+}
+
+.about-note p {
+  margin-bottom: 10px;
+}
+
+/* ============================================================
+   新页面响应式补充
+   ============================================================ */
+
+@media (max-width: 576px) {
+  .home-links {
+    grid-template-columns: 1fr;
+  }
+
+  .type-stat-acc {
+    margin-left: 0;
+  }
+
+  .history-acc {
+    margin-left: 0;
   }
 }
