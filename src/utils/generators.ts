@@ -105,9 +105,9 @@ export function genFraction(): FractionQuestion {
   }
 }
 
-/** 基期与增长量：A（四至五位）与增长率（默认 -15% ~ 100%），需同时计算基期量与增长量 */
-export function genBasePeriod(minPct = -15, maxPct = 100): BasePeriodQuestion {
-  const amount = randInt(1000, 99999)
+/** 基期与增长量：A（三至五位）与增长率（默认 -15% ~ 70%），需同时计算基期量与增长量 */
+export function genBasePeriod(minPct = -15, maxPct = 70): BasePeriodQuestion {
+  const amount = randInt(100, 99999)
   const percent = randInt(Math.round(minPct * 10), Math.round(maxPct * 10)) / 10
   const b = percent / 100
   const baseAnswer = amount / (1 + b)
@@ -251,7 +251,7 @@ const GENERATORS: Record<Exclude<QuestionType, 'exam'>, () => Question> = {
   addsub: genAddSub,
   multiply: genMultiply,
   fraction: genFraction,
-  baseperiod: () => genBasePeriod(-15, 100),
+  baseperiod: genBasePeriod,
   baseperiodshare: genBasePeriodShare,
   sharegap: genShareGap,
 }
@@ -271,7 +271,7 @@ export const EXAM_SEGMENTS: { label: string; count: number }[] = [
   { label: '基期增量', count: 12 },
 ]
 
-/** 套卷：4 加减法 + 4 比大小 + 10 乘法 + 2 基期比重 + 2 比重差 + 12 基期增量（6 道 0~20%、2 道 20~100%、4 道 -15~0） */
+/** 套卷：4 加减法 + 4 比大小 + 10 乘法 + 2 基期比重 + 2 比重差 + 12 基期增量（6 道 0~20%、2 道 20~70%、4 道 -15~0） */
 export function generateExam(): Question[] {
   const qs: Question[] = []
   const push = (g: () => Question, n: number) => {
@@ -282,9 +282,9 @@ export function generateExam(): Question[] {
   push(genMultiply, 10)
   push(genBasePeriodShare, 2)
   push(genShareGap, 2)
-  // 12 道基期增量：6 道 [0,20%)、2 道 [20%,100%]、4 道 [-15%,0)，区间互不重叠
+  // 12 道基期增量：6 道 [0,20%)、2 道 [20%,70%]、4 道 [-15%,0)，区间互不重叠
   push(() => genBasePeriod(0, 19.9), 6)
-  push(() => genBasePeriod(20, 100), 2)
+  push(() => genBasePeriod(20, 70), 2)
   push(() => genBasePeriod(-15, -0.1), 4)
   return qs
 }

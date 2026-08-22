@@ -74,14 +74,14 @@ describe('genFraction 分数比大小', () => {
 })
 
 describe('genBasePeriod 基期与增长量', () => {
-  it('默认增长率 -15% ~ 100%，基期量与增长量符合公式且和为 A', () => {
+  it('默认增长率 -15% ~ 70%，基期量与增长量符合公式且和为 A', () => {
     for (let i = 0; i < 300; i++) {
       const q = genBasePeriod()
-      expect(q.amount).toBeGreaterThanOrEqual(1000)
+      expect(q.amount).toBeGreaterThanOrEqual(100)
       expect(q.amount).toBeLessThanOrEqual(99999)
       expect(Number.isInteger(q.amount)).toBe(true)
       expect(q.percent).toBeGreaterThanOrEqual(-15)
-      expect(q.percent).toBeLessThanOrEqual(100)
+      expect(q.percent).toBeLessThanOrEqual(70)
       const b = q.percent / 100
       expect(q.baseAnswer).toBeCloseTo(q.amount / (1 + b), 10)
       expect(q.growthAnswer).toBeCloseTo(q.amount - q.amount / (1 + b), 10)
@@ -94,9 +94,9 @@ describe('genBasePeriod 基期与增长量', () => {
       const a = genBasePeriod(0, 19.9)
       expect(a.percent).toBeGreaterThanOrEqual(0)
       expect(a.percent).toBeLessThan(20)
-      const b = genBasePeriod(20, 100)
+      const b = genBasePeriod(20, 70)
       expect(b.percent).toBeGreaterThanOrEqual(20)
-      expect(b.percent).toBeLessThanOrEqual(100)
+      expect(b.percent).toBeLessThanOrEqual(70)
       const c = genBasePeriod(-15, -0.1)
       expect(c.percent).toBeGreaterThanOrEqual(-15)
       expect(c.percent).toBeLessThan(0)
@@ -202,7 +202,7 @@ describe('generateExam 套卷模式', () => {
     expect(count('baseperiod')).toBe(12)
   })
 
-  it('基期增量 12 题分布为 6 道 [0,20%)、2 道 [20%,100%]、4 道 [-15%,0)', () => {
+  it('基期增量 12 题分布为 6 道 [0,20%)、2 道 [20%,70%]、4 道 [-15%,0)', () => {
     const qs = generateExam()
     const bps = qs.filter((q) => q.type === 'baseperiod') as BasePeriodQuestion[]
     expect(bps).toHaveLength(12)
