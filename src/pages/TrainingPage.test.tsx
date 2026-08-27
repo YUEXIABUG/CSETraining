@@ -150,7 +150,7 @@ describe('TrainingPage 答题流程', () => {
   it('基期与增长量需同时填写，成绩单分别判对错并分别统计正确率', () => {
     renderTraining('/train/baseperiod?count=1')
 
-    // 基期量 8000 正确；增长量 2100 相对 2000 误差 5%，判错
+    // 基期量 8000 正确；增长量 2100 相对 2000 误差 5%（超出 2% 容差），判错
     fireEvent.change(screen.getByPlaceholderText('输入基期量'), { target: { value: '8000' } })
     fireEvent.change(screen.getByPlaceholderText('输入增长量'), { target: { value: '2100' } })
     fireEvent.click(screen.getByText('提交'))
@@ -162,6 +162,19 @@ describe('TrainingPage 答题流程', () => {
     // 成绩单中基期量与增长量分别标注对错
     expect(screen.getAllByText('✓')).toHaveLength(1)
     expect(screen.getAllByText('✗')).toHaveLength(1)
+  })
+
+  it('基期与增长量均允许 2% 以内误差', () => {
+    renderTraining('/train/baseperiod?count=1')
+
+    // 基期量 8120 相对 8000 误差 1.5%；增长量 1970 相对 2000 误差 1.5%，均应判对
+    fireEvent.change(screen.getByPlaceholderText('输入基期量'), { target: { value: '8120' } })
+    fireEvent.change(screen.getByPlaceholderText('输入增长量'), { target: { value: '1970' } })
+    fireEvent.click(screen.getByText('提交'))
+
+    // 基期量正确率、增长量正确率与饼图中心均为 100%
+    expect(screen.getAllByText('100%').length).toBeGreaterThanOrEqual(2)
+    expect(screen.getAllByText('✓')).toHaveLength(2)
   })
 })
 
@@ -258,6 +271,54 @@ describe('TrainingPage 新选择题型', () => {
     // 共 34 个题号，最后一题为 34
     expect(screen.getByText('34')).toBeTruthy()
     expect(screen.getByText(/第 1 \/ 34 题/)).toBeTruthy()
+  })
+
+  it('套卷成绩单：默认显示全部题目，模块按钮可切换显示的模块', () => {
+    const { container } = renderTraining('/train/exam')
+
+    // 跳到第 34 题（末题）后全部未作答直接交卷，进入成绩单
+    fireEvent.click(screen.getByText('34'))
+    fireEvent.click(screen.getByText('提交'))
+    fireEvent.click(screen.getByText('仍要提交'))
+    expect(screen.getByText(/成绩单/)).toBeTruthy()
+
+    const cards = () => container.querySelectorAll('.result-record')
+    const chips = () => container.querySelectorAll('.module-chip')
+    const cardNos = () => Array.from(cards()).map((el) => el.querySelector('.record-no')?.textContent)
+
+    // 「全部题目」+ 六个模块共 7 个按钮，默认选中「全部题目」并显示全部 34 题
+    expect(chips()).toHaveLength(7)
+    expect(chips()[0].textContent).toContain('全部题目')
+    expect(chips()[0].classList.contains('active')).toBe(true)
+    expect(cards()).toHaveLength(34)
+    expect(cardNos()).toContain('题号 1')
+    expect(cardNos()).toContain('题号 34')
+
+    // 点击「加减法」→ 仅显示该模块 4 题，并展示模块统计
+    fireEvent.click(chips()[1])
+    expect(cards()).toHaveLength(4)
+    expect(cardNos()).toContain('题号 1')
+    expect(cardNos()).not.toContain('题号 5')
+    expect(screen.getByText('加减法 详情')).toBeTruthy()
+    expect(screen.getByText('未答 4 题')).toBeTruthy()
+
+    // 再次点击当前模块 → 回到全部题目
+    fireEvent.click(chips()[1])
+    expect(cards()).toHaveLength(34)
+    expect(screen.queryByText('加减法 详情')).toBeNull()
+
+    // 换另一个模块：乘法运算仅显示其 10 道题（第 9-18 题）
+    fireEvent.click(chips()[3])
+    expect(cards()).toHaveLength(10)
+    expect(cardNos()).toContain('题号 9')
+    expect(cardNos()).not.toContain('题号 8')
+    expect(screen.getByText('乘法运算 详情')).toBeTruthy()
+    expect(screen.getByText('未答 10 题')).toBeTruthy()
+
+    // 点击「全部题目」按钮 → 恢复显示全部题目
+    fireEvent.click(chips()[0])
+    expect(cards()).toHaveLength(34)
+    expect(screen.queryByText('乘法运算 详情')).toBeNull()
   })
 
   it('基期比重选择题：点选正确选项得分', () => {

@@ -130,4 +130,70 @@ describe('StatsPage', () => {
     expect(screen.getByText('还没有练习记录')).toBeTruthy()
     expect(localStorage.getItem('cse-training-history')).toBeNull()
   })
+
+  it('练习记录可展开查看试卷详情，再次点击收起', () => {
+    seed([rec(0, 8)])
+    renderStats()
+
+    fireEvent.click(screen.getByText('详情'))
+    expect(screen.getByText('答对 8 题')).toBeTruthy()
+    expect(screen.getByText('答错 2 题')).toBeTruthy()
+    expect(screen.getByText('总用时 1 分 00 秒')).toBeTruthy()
+    expect(screen.getByText('平均 6秒/题')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('详情'))
+    expect(screen.queryByText('答对 8 题')).toBeNull()
+  })
+
+  it('套卷模式记录展开后可查看分模块表现', () => {
+    seed([
+      {
+        ...rec(0, 20, 34),
+        type: 'exam',
+        wrong: 10,
+        skipped: 4,
+        modules: [
+          { label: '加减法', correct: 3, total: 4 },
+          { label: '基期增量', correct: 5, total: 12 },
+        ],
+      },
+    ])
+    renderStats()
+
+    fireEvent.click(screen.getByText('详情'))
+    expect(screen.getByText('分模块表现')).toBeTruthy()
+    expect(screen.getByText('加减法')).toBeTruthy()
+    expect(screen.getByText('对 3/4')).toBeTruthy()
+    expect(screen.getByText('75%')).toBeTruthy()
+    expect(screen.getByText('对 5/12')).toBeTruthy()
+  })
+
+  it('正确率趋势新增分模块折线图：仅练习 ≥2 组的模块单独绘制', () => {
+    // 乘法 2 组（绘制）+ 分数比大小 1 组（不绘制）
+    seed([rec(0, 4), rec(1, 6), { ...rec(2, 8), id: 'fraction-1', type: 'fraction' }])
+    const { container } = renderStats()
+
+    expect(screen.getByText(/分模块正确率趋势/)).toBeTruthy()
+    const titles = Array.from(container.querySelectorAll('.module-trend-title')).map(
+      (n) => n.textContent,
+    )
+    expect(titles).toContain('乘法运算')
+    expect(titles).not.toContain('分数比大小')
+    // 折线图总数 = 总正确率 1 张 + 分模块 1 张
+    expect(container.querySelectorAll('svg[aria-label="正确率趋势折线图"]').length).toBe(2)
+  })
+
+  it('没有记录时（首次进入）也可以直接导入本地 JSON 文件', async () => {
+    const { container } = renderStats()
+    expect(screen.getByText('还没有练习记录')).toBeTruthy()
+    expect(screen.getByText('导入本地成绩')).toBeTruthy()
+
+    const incoming = { app: 'cse-training-history', version: 1, records: [rec(0, 8)] }
+    const file = new File([JSON.stringify(incoming)], 'grades.json', { type: 'application/json' })
+    const input = container.querySelector('input[type="file"]')!
+    fireEvent.change(input, { target: { files: [file] } })
+
+    expect(await screen.findByText('共 1 次练习')).toBeTruthy()
+    expect(screen.getByText(/导入完成：合并 1 条新记录/)).toBeTruthy()
+  })
 })

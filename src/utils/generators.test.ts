@@ -233,4 +233,14 @@ describe('isWithinTolerance 判卷', () => {
     // 342 × 32.6% = 111.492，答 112 误差约 0.46% 应判对
     expect(isWithinTolerance(112, (342 * 32.6) / 100)).toBe(true)
   })
+
+  it('支持自定义容差：基期与增长量允许 2% 以内误差', () => {
+    expect(isWithinTolerance(101.9, 100, 0.02)).toBe(true)
+    expect(isWithinTolerance(102.1, 100, 0.02)).toBe(false)
+    expect(isWithinTolerance(98.1, 100, 0.02)).toBe(true)
+    expect(isWithinTolerance(97.9, 100, 0.02)).toBe(false)
+    // 增长量为负（下降）时同样按相对误差判断
+    expect(isWithinTolerance(-1970, -2000, 0.02)).toBe(true)
+    expect(isWithinTolerance(-1950, -2000, 0.02)).toBe(false)
+  })
 })

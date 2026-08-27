@@ -86,6 +86,8 @@ export default function TrainingPage() {
   const [records, setRecords] = useState<AnswerRecord[]>([])
   const [phase, setPhase] = useState<'quiz' | 'result'>('quiz')
   const [now, setNow] = useState(Date.now())
+  /** 套卷成绩单当前显示的模块下标（null 表示显示全部题目） */
+  const [moduleDetail, setModuleDetail] = useState<number | null>(null)
 
   const [showExit, setShowExit] = useState(false)
   const [showUnanswered, setShowUnanswered] = useState(false)
@@ -108,6 +110,7 @@ export default function TrainingPage() {
     setViewed(questions.map((_, i) => i === 0))
     setRecords([])
     setPhase('quiz')
+    setModuleDetail(null)
     setShowExit(false)
     setShowUnanswered(false)
     setUnanswered([])
@@ -175,8 +178,8 @@ export default function TrainingPage() {
           if (bt === '' && gt === '') return { userText: '', correct: false, timeMs, skipped: true }
           const bv = Number.parseFloat(bt)
           const gv = Number.parseFloat(gt)
-          const baseCorrect = Number.isFinite(bv) && isWithinTolerance(bv, q.baseAnswer)
-          const growthCorrect = Number.isFinite(gv) && isWithinTolerance(gv, q.growthAnswer)
+          const baseCorrect = Number.isFinite(bv) && isWithinTolerance(bv, q.baseAnswer, 0.02)
+          const growthCorrect = Number.isFinite(gv) && isWithinTolerance(gv, q.growthAnswer, 0.02)
           return {
             userText: `基期量 ${bt || '—'}；增长量 ${gt || '—'}`,
             correct: baseCorrect && growthCorrect,
@@ -286,6 +289,50 @@ export default function TrainingPage() {
       Math.round((records.filter((r) => r.parts?.[partIndex]?.correct).length / total) * 100)
     const moduleLabelAt = (i: number) =>
       moduleRanges.find((r) => i >= r.start && i < r.end)?.label ?? ''
+    /** 答题记录当前显示范围：套卷模式选中模块时仅显示该模块题目，否则显示全部 */
+    const activeRange =
+      qType === 'exam' && moduleDetail !== null ? moduleRanges[moduleDetail] : null
+
+    /** 逐题记录卡片（成绩单主列表与模块详情共用） */
+    const renderRecordCard = (q: Question, r: AnswerRecord | undefined, i: number) => (
+      <div key={i} className="result-record">
+        <div className="record-head">
+          <span className="record-no">题号 {i + 1}</span>
+          {qType === 'exam' && <span className="record-module">{moduleLabelAt(i)}</span>}
+          <ResultBadge r={r} />
+          <span className="record-time">
+            <i className="bi bi-stopwatch me-1" />
+            {formatMs(r?.timeMs ?? 0)}
+          </span>
+        </div>
+        <div className="record-grid">
+          <div className="record-row">
+            <span className="record-label">题目</span>
+            <div className="record-value">
+              <SummaryCell q={q} />
+            </div>
+          </div>
+          <div className="record-row">
+            <span className="record-label">我的答案</span>
+            <div className="record-value">
+              <UserAnswerCell q={q} r={r} />
+            </div>
+          </div>
+          <div className="record-row">
+            <span className="record-label">正确答案</span>
+            <div className="record-value">
+              <CorrectAnswerCell q={q} />
+            </div>
+          </div>
+          <div className="record-row">
+            <span className="record-label">结果</span>
+            <div className="record-value">
+              <ResultCell q={q} r={r} />
+            </div>
+          </div>
+        </div>
+      </div>
+    )
 
     return (
       <div className="fade-in">
@@ -358,19 +405,37 @@ export default function TrainingPage() {
           </div>
           {qType === 'exam' && (
             <div className="module-breakdown mt-4">
-              <div className="chart-subtitle">分模块正确率</div>
+              <div className="chart-subtitle">分模块正确率 · 点击按钮切换下方答题记录的显示范围</div>
               <div className="module-chips">
-                {moduleRanges.map((r) => {
+                <button
+                  type="button"
+                  className={`module-chip${moduleDetail === null ? ' active' : ''}`}
+                  aria-pressed={moduleDetail === null}
+                  onClick={() => setModuleDetail(null)}
+                >
+                  <span className="module-chip-label">全部题目</span>
+                  <span className={`module-chip-acc ${accClassOf(accuracy)}`}>
+                    {correctCount}/{total}
+                  </span>
+                </button>
+                {moduleRanges.map((r, mi) => {
                   const sub = records.slice(r.start, r.end)
                   const ok = sub.filter((x) => !x.skipped && x.correct).length
                   const pct = sub.length ? Math.round((ok / sub.length) * 100) : 0
+                  const active = moduleDetail === mi
                   return (
-                    <div key={r.label} className="module-chip">
+                    <button
+                      key={r.label}
+                      type="button"
+                      className={`module-chip${active ? ' active' : ''}`}
+                      aria-pressed={active}
+                      onClick={() => setModuleDetail(active ? null : mi)}
+                    >
                       <span className="module-chip-label">{r.label}</span>
                       <span className={`module-chip-acc ${accClassOf(pct)}`}>
                         {ok}/{sub.length}
                       </span>
-                    </div>
+                    </button>
                   )
                 })}
               </div>
@@ -381,50 +446,46 @@ export default function TrainingPage() {
         <h2 className="section-title mt-4">
           <i className="bi bi-list-check me-2" />
           答题记录
+          {qType === 'exam' && (
+            <span className="record-module ms-2">
+              {activeRange
+                ? `${activeRange.label} · 第 ${activeRange.start + 1}-${activeRange.end} 题`
+                : '全部题目'}
+            </span>
+          )}
         </h2>
-        <div className="result-records">
-          {questions.map((q, i) => {
-            const r = records[i]
+        {activeRange &&
+          (() => {
+            const sub = records.slice(activeRange.start, activeRange.end)
+            const ok = sub.filter((x) => !x.skipped && x.correct).length
+            const skippedInModule = sub.filter((x) => x.skipped).length
+            const wrongInModule = sub.length - ok - skippedInModule
+            const ms = sub.reduce((s, x) => s + x.timeMs, 0)
+            const pct = sub.length ? Math.round((ok / sub.length) * 100) : 0
             return (
-              <div key={i} className="result-record">
-                <div className="record-head">
-                  <span className="record-no">题号 {i + 1}</span>
-                  {qType === 'exam' && <span className="record-module">{moduleLabelAt(i)}</span>}
-                  <ResultBadge r={r} />
-                  <span className="record-time">
-                    <i className="bi bi-stopwatch me-1" />
-                    {formatMs(r?.timeMs ?? 0)}
-                  </span>
-                </div>
-                <div className="record-grid">
-                  <div className="record-row">
-                    <span className="record-label">题目</span>
-                    <div className="record-value">
-                      <SummaryCell q={q} />
-                    </div>
-                  </div>
-                  <div className="record-row">
-                    <span className="record-label">我的答案</span>
-                    <div className="record-value">
-                      <UserAnswerCell q={q} r={r} />
-                    </div>
-                  </div>
-                  <div className="record-row">
-                    <span className="record-label">正确答案</span>
-                    <div className="record-value">
-                      <CorrectAnswerCell q={q} />
-                    </div>
-                  </div>
-                  <div className="record-row">
-                    <span className="record-label">结果</span>
-                    <div className="record-value">
-                      <ResultCell q={q} r={r} />
-                    </div>
-                  </div>
-                </div>
+              <div key={moduleDetail} className="module-detail-head fade-in">
+                <span className="module-detail-title">
+                  <i className="bi bi-journal-text me-1" />
+                  {activeRange.label} 详情
+                </span>
+                <span>
+                  正确率 <strong className={accClassOf(pct)}>{pct}%</strong>（{ok}/{sub.length}）
+                </span>
+                {wrongInModule > 0 && <span>答错 {wrongInModule} 题</span>}
+                {skippedInModule > 0 && <span>未答 {skippedInModule} 题</span>}
+                <span>
+                  用时 {formatMs(ms)} · 平均 {formatMsShort(sub.length ? ms / sub.length : 0)}/题
+                </span>
               </div>
             )
-          })}
+          })()}
+        <div className="result-records">
+          {questions
+            .slice(activeRange?.start ?? 0, activeRange?.end ?? questions.length)
+            .map((q, k) => {
+              const i = (activeRange?.start ?? 0) + k
+              return renderRecordCard(q, records[i], i)
+            })}
         </div>
 
         <div className="d-flex justify-content-center gap-3 mt-4 flex-wrap">

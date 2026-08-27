@@ -1508,14 +1508,32 @@ button {
   gap: 10px;
 }
 
+/* 模块芯片：点击切换答题记录显示的模块（首个为「全部题目」） */
 .module-chip {
   display: inline-flex;
   align-items: center;
   gap: 8px;
   border: 1px solid var(--card-border);
   background: var(--card-bg);
+  color: var(--ink);
   border-radius: 10px;
   padding: 7px 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s ease, border-color 0.12s ease, box-shadow 0.12s ease,
+    background-color 0.12s ease;
+}
+
+.module-chip:hover {
+  transform: translateY(-1px);
+  border-color: var(--accent-border);
+  box-shadow: 0 4px 10px rgba(15, 17, 21, 0.08);
+}
+
+.module-chip.active {
+  border-color: var(--primary);
+  background: var(--accent-soft);
+  box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
 .module-chip-label {
@@ -1526,6 +1544,23 @@ button {
 .module-chip-acc {
   font-family: var(--font-mono);
   font-weight: 700;
+}
+
+/* 模块详情统计条：选中模块时显示在答题记录上方 */
+.module-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px 18px;
+  flex-wrap: wrap;
+  font-size: 0.88rem;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+  margin-bottom: 12px;
+}
+
+.module-detail-title {
+  font-weight: 700;
+  color: var(--ink);
 }
 
 /* 答题记录卡片 */
@@ -1940,6 +1975,134 @@ button {
   color: var(--muted);
   font-size: 0.82rem;
   white-space: nowrap;
+}
+
+/* 练习记录：可展开查看试卷详情 */
+.history-item {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-item .history-row {
+  border-radius: var(--radius-sm);
+}
+
+.history-item.expanded .history-row {
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+}
+
+.history-detail-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border: 1px solid var(--card-border);
+  background: var(--card-bg);
+  color: var(--muted);
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 2px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.history-detail-btn:hover {
+  color: var(--primary);
+  border-color: var(--accent-border);
+}
+
+.history-item.expanded .history-detail-btn {
+  color: var(--primary);
+  border-color: var(--accent-border);
+}
+
+.history-detail {
+  border: 1px solid var(--card-border);
+  border-top: 1px dashed var(--card-border);
+  border-radius: 0 0 var(--radius-sm) var(--radius-sm);
+  background: var(--card-bg);
+  padding: 12px 14px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.history-detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink);
+}
+
+.history-module-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-module-label {
+  font-weight: 600;
+  min-width: 72px;
+}
+
+.history-module-acc {
+  font-family: var(--font-mono);
+  font-weight: 700;
+}
+
+.history-module-meta {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+
+/* 分模块正确率趋势卡片 */
+.module-trend-card {
+  border: 1px solid var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+  padding: 12px 14px;
+  transition: border-color 0.12s ease;
+}
+
+.module-trend-card:hover {
+  border-color: var(--accent-border);
+}
+
+.module-trend-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.module-trend-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.module-trend-title {
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.module-trend-meta {
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.module-trend-acc {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
 }
 
 /* 导入结果提示 */
@@ -2510,6 +2673,10 @@ button {
   }
 
   .history-acc {
+    margin-left: 0;
+  }
+
+  .module-trend-acc {
     margin-left: 0;
   }
 }

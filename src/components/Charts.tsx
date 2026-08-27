@@ -102,8 +102,8 @@ export interface TrendPoint {
   value: number
 }
 
-/** 折线图：正确率趋势（纵轴固定 0–100%） */
-export function AccuracyTrendChart({ points }: { points: TrendPoint[] }) {
+/** 折线图：正确率趋势（纵轴固定 0–100%）；可选 color 用于区分不同模块的折线 */
+export function AccuracyTrendChart({ points, color }: { points: TrendPoint[]; color?: string }) {
   const n = points.length
   if (n === 0) return null
   const W = 560
@@ -131,10 +131,10 @@ export function AccuracyTrendChart({ points }: { points: TrendPoint[] }) {
           </text>
         </g>
       ))}
-      <path d={area} className="tl-area" />
-      <path d={line} className="tl-line" />
+      <path d={area} className="tl-area" style={color ? { fill: color, opacity: 0.12 } : undefined} />
+      <path d={line} className="tl-line" style={color ? { stroke: color } : undefined} />
       {pts.map((p) => (
-        <circle key={p.i} cx={p.x} cy={p.y} r={2.8} className="tl-dot">
+        <circle key={p.i} cx={p.x} cy={p.y} r={2.8} className="tl-dot" style={color ? { fill: color } : undefined}>
           <title>{`${p.label} · ${p.value}%`}</title>
         </circle>
       ))}

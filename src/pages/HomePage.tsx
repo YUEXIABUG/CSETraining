@@ -121,7 +121,7 @@ export default function HomePage() {
       </section>
 
       <footer className="text-center text-muted small mt-5">
-        加减法须完全准确 · 其余填空题允许 1% 以内误差 · 选择/比大小可先跳过稍后补答 · 交卷前会提醒未答题目
+        加减法须完全准确 · 乘法允许 1% 以内误差 · 基期与增长量允许 2% 以内误差 · 选择/比大小可先跳过稍后补答 · 交卷前会提醒未答题目
       </footer>
 
       <ThemeToggle />

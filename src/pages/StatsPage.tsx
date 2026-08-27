@@ -32,6 +32,17 @@ interface TypeStat {
 const accClassOf = (acc: number) =>
   acc >= 80 ? 'text-success' : acc >= 60 ? 'text-warning' : 'text-danger'
 
+/** 分模块正确率趋势的折线颜色（与首页模块卡片配色一致） */
+const MODULE_TREND_COLORS: Record<QuestionType, string> = {
+  addsub: '#2f6bff',
+  multiply: '#ea580c',
+  fraction: '#16a34a',
+  baseperiod: '#6c47ff',
+  baseperiodshare: '#0d9488',
+  sharegap: '#db2777',
+  exam: '#4f46e5',
+}
+
 function computeTypeStats(history: SessionRecord[]): TypeStat[] {
   const types: QuestionType[] = [...CATEGORIES.map((c) => c.type), EXAM_CATEGORY.type]
   return types
@@ -96,19 +107,33 @@ export default function StatsPage() {
   const [history, setHistory] = useState(loadHistory)
   const [notice, setNotice] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null)
   const [confirmClear, setConfirmClear] = useState(false)
+  /** 练习记录中展开详情的记录 id（未展开为 null） */
+  const [expandedId, setExpandedId] = useState<string | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const totalQuestions = history.reduce((s, r) => s + r.count, 0)
   const totalCorrect = history.reduce((s, r) => s + r.correct, 0)
   const overallAcc = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0
   const typeStats = computeTypeStats(history)
-  const trendPoints = history.slice(-30).map((r) => {
+  const trendPointOf = (r: SessionRecord) => {
     const d = new Date(r.ts)
     return {
       label: `${d.getMonth() + 1}/${d.getDate()}`,
       value: r.count ? Math.round((r.correct / r.count) * 100) : 0,
     }
-  })
+  }
+  const trendPoints = history.slice(-30).map(trendPointOf)
+  /** 分模块正确率趋势：每个有至少 2 次练习的模块单独绘制一条折线 */
+  const moduleTrends = [...CATEGORIES.map((c) => c.type), EXAM_CATEGORY.type]
+    .map((type) => {
+      const list = history.filter((r) => r.type === type).slice(-30)
+      if (list.length < 2) return null
+      return { type, list, points: list.map(trendPointOf) }
+    })
+    .filter(
+      (t): t is { type: QuestionType; list: SessionRecord[]; points: ReturnType<typeof trendPointOf>[] } =>
+        t !== null,
+    )
 
   const handleExport = () => {
     const blob = new Blob([exportHistoryJson()], { type: 'application/json' })
@@ -166,9 +191,27 @@ export default function StatsPage() {
           <i className="bi bi-trophy empty-icon" />
           <h2 className="fs-5 fw-bold">还没有练习记录</h2>
           <p className="text-muted">每次交卷后，成绩会自动记录在这里，见证你的进步。</p>
-          <button type="button" className="btn btn-primary px-4" onClick={() => navigate('/')}>
-            开始训练
-          </button>
+          <div className="d-flex justify-content-center gap-2 flex-wrap">
+            <button type="button" className="btn btn-primary px-4" onClick={() => navigate('/')}>
+              开始训练
+            </button>
+            <button
+              type="button"
+              className="btn btn-outline-primary px-4"
+              onClick={() => fileRef.current?.click()}
+            >
+              <i className="bi bi-download me-1" />
+              导入本地成绩
+            </button>
+          </div>
+          <p className="text-muted small mt-3 mb-0">
+            首次使用？若你在其他设备或浏览器导出过成绩，可直接导入 JSON 文件，历史成绩会自动合并。
+          </p>
+          {notice && (
+            <div className={`import-notice ${notice.kind === 'ok' ? 'notice-ok' : 'notice-err'}`} role="status">
+              {notice.text}
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -203,6 +246,32 @@ export default function StatsPage() {
               <AccuracyTrendChart points={trendPoints} />
             ) : (
               <p className="text-muted small mb-0">再练习几组，就能看到正确率走势了。</p>
+            )}
+            {moduleTrends.length > 0 && (
+              <>
+                <div className="chart-subtitle mt-4">分模块正确率趋势（最近 30 次，各模块单独绘制）</div>
+                <div className="row g-4">
+                  {moduleTrends.map((t) => {
+                    const meta = categoryOf(t.type)
+                    const last = t.points[t.points.length - 1].value
+                    return (
+                      <div key={t.type} className="col-12 col-md-6">
+                        <div className="module-trend-card">
+                          <div className="module-trend-head">
+                            <span className={`cat-icon module-trend-icon ${meta.tint}`}>
+                              <i className={`bi ${meta.icon}`} />
+                            </span>
+                            <span className="module-trend-title">{meta.title}</span>
+                            <span className="module-trend-meta">{t.list.length} 组</span>
+                            <span className={`module-trend-acc ${accClassOf(last)}`}>{last}%</span>
+                          </div>
+                          <AccuracyTrendChart points={t.points} color={MODULE_TREND_COLORS[t.type]} />
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              </>
             )}
           </section>
 
@@ -243,16 +312,56 @@ export default function StatsPage() {
                 .reverse()
                 .map((r) => {
                   const acc = r.count ? Math.round((r.correct / r.count) * 100) : 0
+                  const expanded = expandedId === r.id
                   return (
-                    <div key={r.id} className="history-row">
-                      <span className="history-date">{formatDateTime(r.ts)}</span>
-                      <span className="history-type">{categoryOf(r.type).title}</span>
-                      <span className="history-score">
-                        对 {r.correct}/{r.count}
-                        {r.skipped > 0 && <em className="history-skip">（未答 {r.skipped}）</em>}
-                      </span>
-                      <span className={`history-acc ${accClassOf(acc)}`}>{acc}%</span>
-                      <span className="history-time">{formatMs(r.timeMs)}</span>
+                    <div key={r.id} className={`history-item${expanded ? ' expanded' : ''}`}>
+                      <div className="history-row">
+                        <span className="history-date">{formatDateTime(r.ts)}</span>
+                        <span className="history-type">{categoryOf(r.type).title}</span>
+                        <span className="history-score">
+                          对 {r.correct}/{r.count}
+                          {r.skipped > 0 && <em className="history-skip">（未答 {r.skipped}）</em>}
+                        </span>
+                        <span className={`history-acc ${accClassOf(acc)}`}>{acc}%</span>
+                        <span className="history-time">{formatMs(r.timeMs)}</span>
+                        <button
+                          type="button"
+                          className="history-detail-btn"
+                          aria-expanded={expanded}
+                          onClick={() => setExpandedId(expanded ? null : r.id)}
+                        >
+                          <i className={`bi ${expanded ? 'bi-chevron-up' : 'bi-chevron-down'}`} />
+                          详情
+                        </button>
+                      </div>
+                      {expanded && (
+                        <div className="history-detail fade-in">
+                          <div className="history-detail-grid">
+                            <span>答对 {r.correct} 题</span>
+                            <span>答错 {r.wrong} 题</span>
+                            <span>未作答 {r.skipped} 题</span>
+                            <span>总用时 {formatMs(r.timeMs)}</span>
+                            <span>平均 {formatMsShort(r.count ? r.timeMs / r.count : 0)}/题</span>
+                          </div>
+                          {r.modules && r.modules.length > 0 && (
+                            <div className="history-detail-modules">
+                              <div className="chart-subtitle mt-3 mb-2">分模块表现</div>
+                              {r.modules.map((m) => {
+                                const pct = m.total ? Math.round((m.correct / m.total) * 100) : 0
+                                return (
+                                  <div key={m.label} className="history-module-row">
+                                    <span className="history-module-label">{m.label}</span>
+                                    <span className={`history-module-acc ${accClassOf(pct)}`}>{pct}%</span>
+                                    <span className="history-module-meta">
+                                      对 {m.correct}/{m.total}
+                                    </span>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )
                 })}
@@ -284,16 +393,6 @@ export default function StatsPage() {
                 <i className="bi bi-trash3 me-1" />
                 删除历史数据
               </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept=".json,application/json"
-                hidden
-                onChange={(e) => {
-                  void handleFile(e.target.files?.[0])
-                  e.target.value = ''
-                }}
-              />
             </div>
             {notice && (
               <div className={`import-notice ${notice.kind === 'ok' ? 'notice-ok' : 'notice-err'}`} role="status">
@@ -303,6 +402,18 @@ export default function StatsPage() {
           </section>
         </>
       )}
+
+      {/* 文件选择框常驻页面：空状态（首次进入）与数据管理均可触发导入 */}
+      <input
+        ref={fileRef}
+        type="file"
+        accept=".json,application/json"
+        hidden
+        onChange={(e) => {
+          void handleFile(e.target.files?.[0])
+          e.target.value = ''
+        }}
+      />
 
       {confirmClear && (
         <div className="modal-overlay" onClick={() => setConfirmClear(false)}>

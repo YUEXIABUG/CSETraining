@@ -142,7 +142,7 @@ export function BasePeriodView({
           />
         </label>
       </div>
-      <div className="hint-text mt-3 text-center">两项均允许 1% 以内的误差 · 增长量可为负</div>
+      <div className="hint-text mt-3 text-center">两项均允许 2% 以内的误差 · 增长量可为负</div>
     </div>
   )
 }
