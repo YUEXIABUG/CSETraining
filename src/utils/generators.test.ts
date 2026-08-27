@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
+import { CATEGORIES } from '../meta'
 import type { BasePeriodQuestion } from '../types'
 import {
+  EXAM_SEGMENTS,
   examModuleRanges,
   genAddSub,
   genBasePeriod,
@@ -220,6 +222,15 @@ describe('generateExam 套卷模式', () => {
       prev = r.end
     }
     expect(prev).toBe(34)
+  })
+
+  it('EXAM_SEGMENTS 各分段与单项训练模块一一对应（不含套卷自身）', () => {
+    const types = EXAM_SEGMENTS.map((s) => s.type)
+    expect(new Set(types).size).toBe(EXAM_SEGMENTS.length)
+    expect(types).not.toContain('exam')
+    for (const c of CATEGORIES) {
+      expect(types).toContain(c.type)
+    }
   })
 })
 

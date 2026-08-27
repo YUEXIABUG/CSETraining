@@ -261,14 +261,14 @@ export function generateSet(type: QuestionType, count: number): Question[] {
   return Array.from({ length: count }, () => GENERATORS[type]())
 }
 
-/** 套卷模式分段定义（顺序即出题顺序） */
-export const EXAM_SEGMENTS: { label: string; count: number }[] = [
-  { label: '加减法', count: 4 },
-  { label: '比较大小', count: 4 },
-  { label: '乘法运算', count: 10 },
-  { label: '基期比重', count: 2 },
-  { label: '比重差', count: 2 },
-  { label: '基期增量', count: 12 },
+/** 套卷模式分段定义（顺序即出题顺序）；type 为该分段对应的单项训练模块 */
+export const EXAM_SEGMENTS: { label: string; count: number; type: QuestionType }[] = [
+  { label: '加减法', count: 4, type: 'addsub' },
+  { label: '比较大小', count: 4, type: 'fraction' },
+  { label: '乘法运算', count: 10, type: 'multiply' },
+  { label: '基期比重', count: 2, type: 'baseperiodshare' },
+  { label: '比重差', count: 2, type: 'sharegap' },
+  { label: '基期增量', count: 12, type: 'baseperiod' },
 ]
 
 /** 套卷：4 加减法 + 4 比大小 + 10 乘法 + 2 基期比重 + 2 比重差 + 12 基期增量（6 道 0~20%、2 道 20~70%、4 道 -15~0） */

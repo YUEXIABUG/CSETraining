@@ -21,6 +21,22 @@ function rec(i: number, correct: number, count = 10) {
   }
 }
 
+/** 构造一条套卷模式记录（含分模块统计） */
+function examRec(i: number, correct: number, modules: { label: string; correct: number; total: number }[]) {
+  return {
+    v: 1,
+    id: `exam-${i}`,
+    ts: Date.UTC(2026, 7, i + 10, 10, 0),
+    type: 'exam',
+    count: 34,
+    correct,
+    wrong: 34 - correct,
+    skipped: 0,
+    timeMs: 60000,
+    modules,
+  }
+}
+
 function seed(records: unknown[]) {
   localStorage.setItem('cse-training-history', JSON.stringify(records))
 }
@@ -183,6 +199,47 @@ describe('StatsPage', () => {
     expect(container.querySelectorAll('svg[aria-label="正确率趋势折线图"]').length).toBe(2)
   })
 
+  it('套卷分模块正确率并入对应单项模块趋势图，套卷整卷趋势图保留', () => {
+    // 乘法：1 组单项练习（40%）+ 2 次套卷中的乘法成绩（60%、80%）→ 3 个数据点
+    // 加减法：仅 1 次套卷数据点（不足 2 个，不绘制）
+    seed([
+      rec(0, 4),
+      examRec(0, 20, [
+        { label: '乘法运算', correct: 6, total: 10 },
+        { label: '加减法', correct: 3, total: 4 },
+      ]),
+      examRec(1, 24, [{ label: '乘法运算', correct: 8, total: 10 }]),
+    ])
+    const { container } = renderStats()
+
+    const cards = Array.from(container.querySelectorAll('.module-trend-card'))
+    const titles = cards.map((c) => c.querySelector('.module-trend-title')?.textContent)
+    expect(titles).toContain('乘法运算')
+    // 套卷模式整卷总正确率趋势图保留
+    expect(titles).toContain('套卷模式')
+    expect(titles).not.toContain('多位加减法')
+
+    const multiplyCard = cards.find(
+      (c) => c.querySelector('.module-trend-title')?.textContent === '乘法运算',
+    )!
+    expect(multiplyCard.textContent).toContain('3 组')
+    const dots = Array.from(multiplyCard.querySelectorAll('circle.tl-dot'))
+    expect(dots).toHaveLength(3)
+    // 来自套卷的 2 个数据点以空心圆展示
+    expect(multiplyCard.querySelectorAll('circle.tl-dot-open')).toHaveLength(2)
+    // 每个数据点带悬浮提示框，框内仅显示该点正确率
+    const tooltips = Array.from(multiplyCard.querySelectorAll('.tl-point')).map(
+      (g) => g.querySelector('.tl-tip-text')?.textContent ?? '',
+    )
+    expect(tooltips).toEqual(['40%', '60%', '80%'])
+
+    // 套卷模式趋势图为整卷总正确率：2 次套卷 → 2 个数据点
+    const examCard = cards.find(
+      (c) => c.querySelector('.module-trend-title')?.textContent === '套卷模式',
+    )!
+    expect(examCard.querySelectorAll('circle.tl-dot')).toHaveLength(2)
+  })
+
   it('没有记录时（首次进入）也可以直接导入本地 JSON 文件', async () => {
     const { container } = renderStats()
     expect(screen.getByText('还没有练习记录')).toBeTruthy()
@@ -195,5 +252,52 @@ describe('StatsPage', () => {
 
     expect(await screen.findByText('共 1 次练习')).toBeTruthy()
     expect(screen.getByText(/导入完成：合并 1 条新记录/)).toBeTruthy()
+  })
+
+  it('趋势图支持日/周/月记录切换，按所选粒度聚合正确率', () => {
+    // rec(i) 的时间为 8 月 (i+1) 日：rec(1) = 8 月 2 日（周日）40%、rec(2) = 8 月 3 日（周一）80%：
+    // 日记录 → 2 个点；周记录 → 分属两周（7/27、8/3）仍 2 个点；月记录 → 合并为 (4+8)/20 = 60%
+    seed([rec(1, 4), rec(2, 8)])
+    const { container } = renderStats()
+    const svg = container.querySelector('svg[aria-label="正确率趋势折线图"]')!
+    const tips = () =>
+      Array.from(svg.querySelectorAll('.tl-tip-text')).map((n) => n.textContent)
+
+    expect(tips()).toEqual(['40%', '80%'])
+
+    fireEvent.click(screen.getByText('周记录'))
+    expect(tips()).toEqual(['40%', '80%'])
+    expect(svg.textContent).toContain('7/27') // 8 月 2 日所在周从周一 7 月 27 日开始
+    expect(svg.textContent).toContain('8/3')
+
+    fireEvent.click(screen.getByText('月记录'))
+    expect(tips()).toEqual(['60%'])
+    expect(svg.textContent).toContain('2026/8')
+  })
+
+  it('趋势图仅统计最近半年的记录', () => {
+    const day = 24 * 3600 * 1000
+    const now = Date.now()
+    seed([
+      { ...rec(0, 4), id: 'old', ts: now - 200 * day },
+      { ...rec(1, 6), id: 'recent-1', ts: now - 2 * day },
+      { ...rec(2, 8), id: 'recent-2', ts: now - 1 * day },
+    ])
+    const { container } = renderStats()
+    const svg = container.querySelector('svg[aria-label="正确率趋势折线图"]')!
+    // 200 天前的记录不参与绘制，仅保留最近 2 条
+    const tips = Array.from(svg.querySelectorAll('.tl-tip-text')).map((n) => n.textContent)
+    expect(tips).toEqual(['60%', '80%'])
+  })
+
+  it('数据点悬浮提示为白色圆角矩形框，框内为黑色正确率', () => {
+    seed([rec(0, 4), rec(1, 8)])
+    const { container } = renderStats()
+    const svg = container.querySelector('svg[aria-label="正确率趋势折线图"]')!
+    const boxes = svg.querySelectorAll('.tl-tip-box')
+    expect(boxes).toHaveLength(2)
+    const rect = boxes[0].querySelector('rect.tl-tip-rect')!
+    expect(rect.getAttribute('rx')).toBe('6')
+    expect(boxes[0].querySelector('.tl-tip-text')!.textContent).toBe('40%')
   })
 })

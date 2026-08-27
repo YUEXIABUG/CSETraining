@@ -1,10 +1,11 @@
 import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AccuracyTrendChart } from '../components/Charts'
+import { AccuracyTrendChart, type TrendPoint } from '../components/Charts'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { CATEGORIES, EXAM_CATEGORY, categoryOf } from '../meta'
 import type { QuestionType } from '../types'
 import { formatDateTime, formatMs, formatMsShort } from '../utils/display'
+import { EXAM_SEGMENTS } from '../utils/generators'
 import {
   clearHistory,
   exportHistoryJson,
@@ -41,6 +42,87 @@ const MODULE_TREND_COLORS: Record<QuestionType, string> = {
   baseperiodshare: '#0d9488',
   sharegap: '#db2777',
   exam: '#4f46e5',
+}
+
+/** 正确率趋势的时间聚合粒度 */
+type TrendGranularity = 'day' | 'week' | 'month'
+
+const TREND_GRANULARITIES: { key: TrendGranularity; label: string; caption: string }[] = [
+  { key: 'day', label: '日记录', caption: '按日' },
+  { key: 'week', label: '周记录', caption: '按周' },
+  { key: 'month', label: '月记录', caption: '按月' },
+]
+
+/** 聚合前的单条正确率数据 */
+interface TrendDatum {
+  ts: number
+  correct: number
+  total: number
+  /** 来自套卷模式的分模块统计 */
+  fromExam?: boolean
+}
+
+/** 趋势图统计范围的起始时间戳（最近半年） */
+function trendRangeStart(now: number): number {
+  const start = new Date(now)
+  start.setMonth(start.getMonth() - 6)
+  return start.getTime()
+}
+
+/** 时间戳在给定粒度下对应的桶 key 与横轴标签（周从周一开始） */
+function bucketOf(ts: number, granularity: TrendGranularity): { key: string; label: string } {
+  const d = new Date(ts)
+  if (granularity === 'day') {
+    return {
+      key: `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`,
+      label: `${d.getMonth() + 1}/${d.getDate()}`,
+    }
+  }
+  if (granularity === 'week') {
+    const monday = new Date(d)
+    monday.setDate(d.getDate() - ((d.getDay() + 6) % 7))
+    return {
+      key: `W${monday.getFullYear()}-${monday.getMonth() + 1}-${monday.getDate()}`,
+      label: `${monday.getMonth() + 1}/${monday.getDate()}`,
+    }
+  }
+  return {
+    key: `M${d.getFullYear()}-${d.getMonth() + 1}`,
+    label: `${d.getFullYear()}/${d.getMonth() + 1}`,
+  }
+}
+
+/** 将按时间升序的数据按粒度聚合为趋势数据点（正确率 = 区间内总答对 / 总题数） */
+function toTrendPoints(data: TrendDatum[], granularity: TrendGranularity): TrendPoint[] {
+  const buckets: {
+    key: string
+    label: string
+    correct: number
+    total: number
+    allExam: boolean
+  }[] = []
+  for (const item of data) {
+    const { key, label } = bucketOf(item.ts, granularity)
+    const last = buckets[buckets.length - 1]
+    if (last && last.key === key) {
+      last.correct += item.correct
+      last.total += item.total
+      last.allExam = last.allExam && !!item.fromExam
+    } else {
+      buckets.push({
+        key,
+        label,
+        correct: item.correct,
+        total: item.total,
+        allExam: !!item.fromExam,
+      })
+    }
+  }
+  return buckets.map((b) => ({
+    label: b.label,
+    value: b.total ? Math.round((b.correct / b.total) * 100) : 0,
+    source: b.allExam ? '套卷模式' : undefined,
+  }))
 }
 
 function computeTypeStats(history: SessionRecord[]): TypeStat[] {
@@ -115,24 +197,52 @@ export default function StatsPage() {
   const totalCorrect = history.reduce((s, r) => s + r.correct, 0)
   const overallAcc = totalQuestions ? Math.round((totalCorrect / totalQuestions) * 100) : 0
   const typeStats = computeTypeStats(history)
-  const trendPointOf = (r: SessionRecord) => {
-    const d = new Date(r.ts)
-    return {
-      label: `${d.getMonth() + 1}/${d.getDate()}`,
-      value: r.count ? Math.round((r.correct / r.count) * 100) : 0,
-    }
+  /** 正确率趋势的统计粒度（日 / 周 / 月记录） */
+  const [granularity, setGranularity] = useState<TrendGranularity>('day')
+  const granCaption = TREND_GRANULARITIES.find((g) => g.key === granularity)?.caption ?? '按日'
+  /** 趋势图统计范围：最近半年内的记录 */
+  const rangeRecords = history.filter((r) => r.ts >= trendRangeStart(Date.now()))
+  const trendPoints = toTrendPoints(
+    rangeRecords.map((r) => ({ ts: r.ts, correct: r.correct, total: r.count })),
+    granularity,
+  )
+  /** 套卷记录中某单项模块的答对 / 总题数，无该模块数据时返回 null */
+  const examModuleData = (
+    r: SessionRecord,
+    type: QuestionType,
+  ): { correct: number; total: number } | null => {
+    if (!r.modules) return null
+    const label = EXAM_SEGMENTS.find((s) => s.type === type)?.label
+    const m = r.modules.find((mod) => mod.label === label)
+    if (!m || !m.total) return null
+    return { correct: m.correct, total: m.total }
   }
-  const trendPoints = history.slice(-30).map(trendPointOf)
-  /** 分模块正确率趋势：每个有至少 2 次练习的模块单独绘制一条折线 */
+  /**
+   * 分模块正确率趋势：每个有至少 2 条数据的模块单独绘制一条折线。
+   * 套卷模式保留整卷总正确率折线；其余单项模块的折线同时并入套卷中该模块的成绩（按时间排序）。
+   */
   const moduleTrends = [...CATEGORIES.map((c) => c.type), EXAM_CATEGORY.type]
     .map((type) => {
-      const list = history.filter((r) => r.type === type).slice(-30)
-      if (list.length < 2) return null
-      return { type, list, points: list.map(trendPointOf) }
+      let data: TrendDatum[]
+      if (type === EXAM_CATEGORY.type) {
+        data = rangeRecords
+          .filter((r) => r.type === type)
+          .map((r) => ({ ts: r.ts, correct: r.correct, total: r.count }))
+      } else {
+        data = rangeRecords.flatMap((r): TrendDatum[] => {
+          if (r.type === type) return [{ ts: r.ts, correct: r.correct, total: r.count }]
+          if (r.type === EXAM_CATEGORY.type) {
+            const m = examModuleData(r, type)
+            if (m) return [{ ts: r.ts, correct: m.correct, total: m.total, fromExam: true }]
+          }
+          return []
+        })
+      }
+      if (data.length < 2) return null
+      return { type, count: data.length, points: toTrendPoints(data, granularity) }
     })
     .filter(
-      (t): t is { type: QuestionType; list: SessionRecord[]; points: ReturnType<typeof trendPointOf>[] } =>
-        t !== null,
+      (t): t is { type: QuestionType; count: number; points: TrendPoint[] } => t !== null,
     )
 
   const handleExport = () => {
@@ -241,15 +351,29 @@ export default function StatsPage() {
               <i className="bi bi-graph-up me-2" />
               正确率趋势
             </h2>
-            <div className="chart-subtitle">最近 {trendPoints.length} 次练习的总正确率</div>
-            {trendPoints.length >= 2 ? (
+            <div className="trend-switch" role="group" aria-label="趋势统计粒度切换">
+              {TREND_GRANULARITIES.map((g) => (
+                <button
+                  key={g.key}
+                  type="button"
+                  className={`trend-switch-btn${granularity === g.key ? ' active' : ''}`}
+                  onClick={() => setGranularity(g.key)}
+                >
+                  {g.label}
+                </button>
+              ))}
+            </div>
+            <div className="chart-subtitle">最近半年{granCaption}统计的总正确率</div>
+            {rangeRecords.length >= 2 ? (
               <AccuracyTrendChart points={trendPoints} />
             ) : (
               <p className="text-muted small mb-0">再练习几组，就能看到正确率走势了。</p>
             )}
             {moduleTrends.length > 0 && (
               <>
-                <div className="chart-subtitle mt-4">分模块正确率趋势（最近 30 次，各模块单独绘制）</div>
+                <div className="chart-subtitle mt-4">
+                  分模块正确率趋势（最近半年{granCaption}统计，单项练习 + 套卷模式分模块成绩，各模块单独绘制；空心点来自套卷模式）
+                </div>
                 <div className="row g-4">
                   {moduleTrends.map((t) => {
                     const meta = categoryOf(t.type)
@@ -262,7 +386,7 @@ export default function StatsPage() {
                               <i className={`bi ${meta.icon}`} />
                             </span>
                             <span className="module-trend-title">{meta.title}</span>
-                            <span className="module-trend-meta">{t.list.length} 组</span>
+                            <span className="module-trend-meta">{t.count} 组</span>
                             <span className={`module-trend-acc ${accClassOf(last)}`}>{last}%</span>
                           </div>
                           <AccuracyTrendChart points={t.points} color={MODULE_TREND_COLORS[t.type]} />

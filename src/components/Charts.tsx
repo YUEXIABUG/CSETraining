@@ -100,6 +100,8 @@ export interface TrendPoint {
   label: string
   /** 纵轴数值（0–100） */
   value: number
+  /** 数据来源说明（如「套卷模式」）；有值时数据点以空心圆区分展示 */
+  source?: string
 }
 
 /** 折线图：正确率趋势（纵轴固定 0–100%）；可选 color 用于区分不同模块的折线 */
@@ -133,11 +135,43 @@ export function AccuracyTrendChart({ points, color }: { points: TrendPoint[]; co
       ))}
       <path d={area} className="tl-area" style={color ? { fill: color, opacity: 0.12 } : undefined} />
       <path d={line} className="tl-line" style={color ? { stroke: color } : undefined} />
-      {pts.map((p) => (
-        <circle key={p.i} cx={p.x} cy={p.y} r={2.8} className="tl-dot" style={color ? { fill: color } : undefined}>
-          <title>{`${p.label} · ${p.value}%`}</title>
-        </circle>
-      ))}
+      {pts.map((p) => {
+        const tip = `${p.value}%`
+        const boxW = Math.round(tip.length * 6.8) + 16
+        const boxH = 22
+        // 数据点靠近顶边时提示框放到点下方，靠近左右边时水平平移，避免被画布裁剪
+        const below = p.y - 10 - boxH < 2
+        const boxY = below ? p.y + 10 : p.y - 10 - boxH
+        const boxX = Math.min(Math.max(p.x - boxW / 2, 4), W - boxW - 4)
+        return (
+          <g key={p.i} className="tl-point">
+            <circle cx={p.x} cy={p.y} r={9} className="tl-dot-hit" />
+            {p.source ? (
+              <circle
+                cx={p.x}
+                cy={p.y}
+                r={3.4}
+                className="tl-dot tl-dot-open"
+                style={{ fill: 'var(--card-bg)', stroke: color ?? 'var(--primary)' }}
+              />
+            ) : (
+              <circle cx={p.x} cy={p.y} r={2.8} className="tl-dot" style={color ? { fill: color } : undefined} />
+            )}
+            <g className="tl-tip-box">
+              <rect x={boxX} y={boxY} width={boxW} height={boxH} rx={6} className="tl-tip-rect" />
+              <text
+                x={boxX + boxW / 2}
+                y={boxY + boxH / 2}
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="tl-tip-text"
+              >
+                {tip}
+              </text>
+            </g>
+          </g>
+        )
+      })}
       {xLabels.map((p) => (
         <text key={p.i} x={p.x} y={H - 8} textAnchor="middle" className="tl-tick">
           {p.label}
