@@ -55,7 +55,7 @@ describe('genMultiply 乘法运算', () => {
 })
 
 describe('genFraction 分数比大小', () => {
-  it('分子分母为整数，两分数值相差 5% 以内且不相等，答案与真实大小一致', () => {
+  it('分子分母为整数，两分数值均在 1% ~ 10% 之间、相差 5% 以内且不相等，答案与真实大小一致', () => {
     for (let i = 0; i < 300; i++) {
       const q = genFraction()
       for (const f of [q.left, q.right]) {
@@ -66,6 +66,10 @@ describe('genFraction 分数比大小', () => {
       }
       const l = q.left.n / q.left.d
       const r = q.right.n / q.right.d
+      expect(l).toBeGreaterThanOrEqual(0.01)
+      expect(l).toBeLessThanOrEqual(0.1)
+      expect(r).toBeGreaterThanOrEqual(0.01)
+      expect(r).toBeLessThanOrEqual(0.1)
       expect(l).not.toBe(r)
       const rel = Math.abs(l - r) / l
       expect(rel).toBeGreaterThan(0)

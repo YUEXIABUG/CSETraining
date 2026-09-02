@@ -261,6 +261,78 @@ describe('TrainingPage 跳题与回看', () => {
   })
 })
 
+describe('TrainingPage 成绩单题号表与仅看错题', () => {
+  it('成绩单题号表答对绿色、答错红色、未作答灰色，点击题号定位记录卡片', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const { container } = renderTraining('/train/multiply?count=2')
+
+    // 第 1 题答对；第 2 题未作答
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '100' } })
+    fireEvent.click(screen.getByText('下一题'))
+    fireEvent.click(screen.getByText('提交'))
+    fireEvent.click(screen.getByText('仍要提交'))
+    expect(screen.getByText(/成绩单/)).toBeTruthy()
+
+    expect(screen.getByText('题号表')).toBeTruthy()
+    const axis = container.querySelector('.quiz-axis')!
+    expect(axis.querySelectorAll('.prog-chip')).toHaveLength(2)
+    expect(axis.querySelectorAll('.prog-chip.st-answered .chip-mark')).toHaveLength(1)
+    expect(axis.querySelectorAll('.prog-chip.st-unseen')).toHaveLength(1)
+    // 图例同步为 答对 / 答错 / 未作答
+    expect(axis.textContent).toContain('答对')
+    expect(axis.textContent).toContain('答错')
+    expect(axis.textContent).toContain('未作答')
+
+    // 点击第 2 题题号 → 滚动定位到对应记录卡片
+    fireEvent.click(axis.querySelectorAll('.prog-chip')[1])
+    expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+  })
+
+  it('「仅看错题」仅显示答错与未作答题目，关闭后恢复全部', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const { container } = renderTraining('/train/multiply?count=2')
+
+    // 第 1 题答错（999 ≠ 100）；第 2 题答对
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '999' } })
+    fireEvent.click(screen.getByText('下一题'))
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '100' } })
+    fireEvent.click(screen.getByText('提交'))
+    expect(screen.getByText(/正确率（1\/2）/)).toBeTruthy()
+
+    const cards = () => container.querySelectorAll('.result-record')
+    expect(cards()).toHaveLength(2)
+
+    // 开启「仅看错题」→ 仅剩第 1 题（答错）
+    fireEvent.click(screen.getByLabelText('仅看错题'))
+    expect(cards()).toHaveLength(1)
+    expect(cards()[0].querySelector('.record-no')?.textContent).toBe('题号 1')
+
+    // 关闭后恢复全部记录
+    fireEvent.click(screen.getByLabelText('仅看错题'))
+    expect(cards()).toHaveLength(2)
+  })
+
+  it('全部答对时开启「仅看错题」显示无错题提示，点击正确题号自动解除筛选', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const { container } = renderTraining('/train/multiply?count=2')
+
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '100' } })
+    fireEvent.click(screen.getByText('下一题'))
+    fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '100' } })
+    fireEvent.click(screen.getByText('提交'))
+    expect(screen.getByText(/正确率（2\/2）/)).toBeTruthy()
+
+    fireEvent.click(screen.getByLabelText('仅看错题'))
+    expect(container.querySelectorAll('.result-record')).toHaveLength(0)
+    expect(screen.getByText(/没有错题/)).toBeTruthy()
+
+    // 点击绿色的第 1 题题号 → 自动关闭「仅看错题」并定位
+    const axis = container.querySelector('.quiz-axis')!
+    fireEvent.click(axis.querySelectorAll('.prog-chip')[0])
+    expect(container.querySelectorAll('.result-record')).toHaveLength(2)
+  })
+})
+
 describe('TrainingPage 新选择题型', () => {
   it('套卷模式进度条分模块显示六个模块', () => {
     renderTraining('/train/exam')

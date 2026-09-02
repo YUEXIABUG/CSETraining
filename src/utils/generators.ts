@@ -73,10 +73,12 @@ export function genMultiply(): MultiplyQuestion {
   return { type: 'multiply', base, percent, answer: (base * percent) / 100 }
 }
 
-/** 分数比大小：两个值相差 5% 以内（且差异可辨）的分数，分子分母均为整数 */
+/** 分数比大小：两个分数值均在 1% ~ 10% 之间、相差 5% 以内（且差异可辨），分子分母均为整数 */
 export function genFraction(): FractionQuestion {
   for (let attempt = 0; attempt < 300; attempt++) {
-    const left = { n: randInt(110, 9999), d: randInt(110, 9999) }
+    // 分母取分子的 10 倍至 9999，保证分数值落在 1% ~ 10% 区间内
+    const n = randInt(110, 999)
+    const left = { n, d: randInt(n * 10, 9999) }
     const v1 = left.n / left.d
     const deltaPct = (randInt(8, 50) / 10) * (Math.random() < 0.5 ? -1 : 1) // ±0.8% ~ ±5%
     const dMin = Math.max(110, Math.round(left.d * 0.6))
@@ -87,7 +89,7 @@ export function genFraction(): FractionQuestion {
     if (left.n * d2 === n2 * left.d) n2 += 1 // 避免两个分数恰好相等
     const v2 = n2 / d2
     const rel = Math.abs(v2 - v1) / v1
-    if (rel > 0.002 && rel <= 0.05) {
+    if (rel > 0.002 && rel <= 0.05 && v2 >= 0.01 && v2 <= 0.1) {
       return {
         type: 'fraction',
         left,
@@ -96,11 +98,11 @@ export function genFraction(): FractionQuestion {
       }
     }
   }
-  // 理论上几乎不可达的兜底
+  // 理论上几乎不可达的兜底（两个值均在 1% ~ 10% 之间）
   return {
     type: 'fraction',
-    left: { n: 3, d: 7 },
-    right: { n: 4, d: 9 },
+    left: { n: 123, d: 4567 },
+    right: { n: 128, d: 4600 },
     answer: '<',
   }
 }

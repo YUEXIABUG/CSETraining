@@ -88,6 +88,12 @@ export default function TrainingPage() {
   const [now, setNow] = useState(Date.now())
   /** 套卷成绩单当前显示的模块下标（null 表示显示全部题目） */
   const [moduleDetail, setModuleDetail] = useState<number | null>(null)
+  /** 成绩单：仅显示错题（答错与未作答） */
+  const [onlyWrong, setOnlyWrong] = useState(false)
+  /** 成绩单：题号表点击定位的目标题目（nonce 保证重复点击同一题号也能再次滚动） */
+  const [focusTarget, setFocusTarget] = useState<{ i: number; nonce: number } | null>(null)
+  /** 成绩单：逐题记录卡片 DOM 引用，用于点击题号后滚动定位 */
+  const cardRefs = useRef<(HTMLDivElement | null)[]>([])
 
   const [showExit, setShowExit] = useState(false)
   const [showUnanswered, setShowUnanswered] = useState(false)
@@ -111,6 +117,9 @@ export default function TrainingPage() {
     setRecords([])
     setPhase('quiz')
     setModuleDetail(null)
+    setOnlyWrong(false)
+    setFocusTarget(null)
+    cardRefs.current = []
     setShowExit(false)
     setShowUnanswered(false)
     setUnanswered([])
@@ -119,6 +128,18 @@ export default function TrainingPage() {
     qStartRef.current = Date.now()
     totalStartRef.current = Date.now()
   }, [questions])
+
+  // 成绩单点击题号后：滚动到对应记录卡片并短暂高亮
+  // （点击时会先解除隐藏该题的筛选，状态在同一次渲染中生效，故依赖只需 focusTarget）
+  useEffect(() => {
+    if (!focusTarget) return
+    const el = cardRefs.current[focusTarget.i]
+    if (!el) return
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    el.classList.add('record-focus')
+    const t = window.setTimeout(() => el.classList.remove('record-focus'), 1600)
+    return () => window.clearTimeout(t)
+  }, [focusTarget])
 
   const question = questions[index]
   const draft = drafts[index] ?? {}
@@ -293,9 +314,54 @@ export default function TrainingPage() {
     const activeRange =
       qType === 'exam' && moduleDetail !== null ? moduleRanges[moduleDetail] : null
 
+    /** 成绩单题号状态：答对 / 答错 / 未作答 */
+    const resultStatusOf = (i: number): 'correct' | 'wrong' | 'skipped' => {
+      const r = records[i]
+      if (r?.skipped) return 'skipped'
+      return r?.correct ? 'correct' : 'wrong'
+    }
+
+    /** 点击题号：定位到对应记录卡片（若被「仅看错题」或模块筛选隐藏，先解除相应筛选） */
+    const focusQuestion = (i: number) => {
+      if (onlyWrong && records[i]?.correct) setOnlyWrong(false)
+      if (activeRange && (i < activeRange.start || i >= activeRange.end)) setModuleDetail(null)
+      setFocusTarget((t) => ({ i, nonce: (t?.nonce ?? 0) + 1 }))
+    }
+
+    const renderResultChip = (i: number) => {
+      const st = resultStatusOf(i)
+      const stCls = st === 'correct' ? 'st-answered' : st === 'wrong' ? 'st-viewed' : 'st-unseen'
+      const stText = st === 'correct' ? '答对' : st === 'wrong' ? '答错' : '未作答'
+      return (
+        <button
+          key={i}
+          type="button"
+          className={`prog-chip ${stCls}`}
+          onClick={() => focusQuestion(i)}
+          title={`第 ${i + 1} 题 · ${stText} · 点击定位`}
+        >
+          {st === 'correct' && <ChipMark color="var(--ok)" />}
+          {st === 'wrong' && <ChipMark color="var(--bad)" />}
+          <span className="chip-no">{i + 1}</span>
+        </button>
+      )
+    }
+
+    /** 当前显示的答题记录下标：按模块范围截取，开启「仅看错题」时仅保留答错与未作答 */
+    const visibleIndices: number[] = []
+    for (let i = activeRange?.start ?? 0; i < (activeRange?.end ?? questions.length); i++) {
+      if (!onlyWrong || !records[i]?.correct) visibleIndices.push(i)
+    }
+
     /** 逐题记录卡片（成绩单主列表与模块详情共用） */
     const renderRecordCard = (q: Question, r: AnswerRecord | undefined, i: number) => (
-      <div key={i} className="result-record">
+      <div
+        key={i}
+        className="result-record"
+        ref={(el) => {
+          cardRefs.current[i] = el
+        }}
+      >
         <div className="record-head">
           <span className="record-no">题号 {i + 1}</span>
           {qType === 'exam' && <span className="record-module">{moduleLabelAt(i)}</span>}
@@ -341,154 +407,226 @@ export default function TrainingPage() {
           <span className="timer-chip">共 {total} 题</span>
         </div>
 
-        <div className="row g-3 mt-2">
-          {isBase ? (
-            <>
-              <div className="col-6 col-sm-3">
-                <div className="stat-card">
-                  <div className={`stat-value ${accClassOf(partAcc(0))}`}>{partAcc(0)}%</div>
-                  <div className="stat-label">基期量正确率</div>
-                </div>
-              </div>
-              <div className="col-6 col-sm-3">
-                <div className="stat-card">
-                  <div className={`stat-value ${accClassOf(partAcc(1))}`}>{partAcc(1)}%</div>
-                  <div className="stat-label">增长量正确率</div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="col-12 col-sm-4">
-              <div className="stat-card">
-                <div className={`stat-value ${accClassOf(accuracy)}`}>{accuracy}%</div>
-                <div className="stat-label">
-                  正确率（{correctCount}/{total}）
-                </div>
-              </div>
+        <div className="quiz-body">
+          <aside className="quiz-axis panel" aria-label="成绩单题号表">
+            <div className="axis-head">
+              <span className="progress-title">
+                <i className="bi bi-list-ol me-2" />
+                题号表
+              </span>
             </div>
-          )}
-          <div className={isBase ? 'col-6 col-sm-3' : 'col-12 col-sm-4'}>
-            <div className="stat-card">
-              <div className="stat-value">{formatMs(totalMs)}</div>
-              <div className="stat-label">总用时</div>
+            <div className="axis-count text-muted small">
+              答对 {correctCount} · 答错 {wrongCount} · 未作答 {skippedCount}
             </div>
-          </div>
-          <div className={isBase ? 'col-6 col-sm-3' : 'col-12 col-sm-4'}>
-            <div className="stat-card">
-              <div className="stat-value">{formatMs(total ? totalMs / total : 0)}</div>
-              <div className="stat-label">平均每题</div>
-            </div>
-          </div>
-        </div>
-
-        <section className="panel mt-4">
-          <h2 className="section-title">
-            <i className="bi bi-graph-up-arrow me-2" />
-            答题分析
-          </h2>
-          <div className="row g-4 align-items-center">
-            <div className="col-12 col-md-5">
-              <DonutChart
-                centerLabel={`${accuracy}%`}
-                centerSub="正确率"
-                segments={[
-                  { label: '答对', value: correctCount, color: 'var(--ok)' },
-                  { label: '答错', value: wrongCount, color: 'var(--bad)' },
-                  { label: '未作答', value: skippedCount, color: 'var(--faint)' },
-                ]}
+            <div className="axis-count text-muted small">点击题号可定位到对应记录</div>
+            <div className="form-check form-switch only-wrong-switch">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                role="switch"
+                id="only-wrong-switch"
+                checked={onlyWrong}
+                onChange={(e) => setOnlyWrong(e.target.checked)}
               />
+              <label className="form-check-label" htmlFor="only-wrong-switch">
+                仅看错题
+              </label>
             </div>
-            <div className="col-12 col-md-7">
-              <div className="chart-subtitle">每题用时趋势</div>
-              <TimeLineChart times={records.map((r) => r.timeMs)} />
+            {qType === 'exam' ? (
+              <div className="progress-modules">
+                {moduleRanges.map((r) => (
+                  <div key={r.label} className="progress-module">
+                    <div className="progress-module-label">
+                      {r.label}
+                      <span className="progress-module-count">
+                        {records.slice(r.start, r.end).filter((x) => !x.skipped && x.correct).length}
+                        /{r.end - r.start}
+                      </span>
+                    </div>
+                    <div className="progress-chips-flow">
+                      {Array.from({ length: r.end - r.start }, (_, k) => renderResultChip(r.start + k))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className={questions.length <= 10 ? 'progress-col' : 'progress-grid'}>
+                {questions.map((_, i) => renderResultChip(i))}
+              </div>
+            )}
+            <div className="progress-legend">
+              <span>
+                <span className="legend-chip lg-answered">
+                  <ChipMark color="var(--ok)" />
+                </span>
+                答对
+              </span>
+              <span>
+                <span className="legend-chip lg-viewed">
+                  <ChipMark color="var(--bad)" />
+                </span>
+                答错
+              </span>
+              <span>
+                <span className="legend-chip lg-unseen" />
+                未作答
+              </span>
             </div>
-          </div>
-          {qType === 'exam' && (
-            <div className="module-breakdown mt-4">
-              <div className="chart-subtitle">分模块正确率 · 点击按钮切换下方答题记录的显示范围</div>
-              <div className="module-chips">
-                <button
-                  type="button"
-                  className={`module-chip${moduleDetail === null ? ' active' : ''}`}
-                  aria-pressed={moduleDetail === null}
-                  onClick={() => setModuleDetail(null)}
-                >
-                  <span className="module-chip-label">全部题目</span>
-                  <span className={`module-chip-acc ${accClassOf(accuracy)}`}>
-                    {correctCount}/{total}
-                  </span>
-                </button>
-                {moduleRanges.map((r, mi) => {
-                  const sub = records.slice(r.start, r.end)
-                  const ok = sub.filter((x) => !x.skipped && x.correct).length
-                  const pct = sub.length ? Math.round((ok / sub.length) * 100) : 0
-                  const active = moduleDetail === mi
-                  return (
+          </aside>
+
+          <div className="quiz-main">
+            <div className="row g-3">
+              {isBase ? (
+                <>
+                  <div className="col-6 col-sm-3">
+                    <div className="stat-card">
+                      <div className={`stat-value ${accClassOf(partAcc(0))}`}>{partAcc(0)}%</div>
+                      <div className="stat-label">基期量正确率</div>
+                    </div>
+                  </div>
+                  <div className="col-6 col-sm-3">
+                    <div className="stat-card">
+                      <div className={`stat-value ${accClassOf(partAcc(1))}`}>{partAcc(1)}%</div>
+                      <div className="stat-label">增长量正确率</div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="col-12 col-sm-4">
+                  <div className="stat-card">
+                    <div className={`stat-value ${accClassOf(accuracy)}`}>{accuracy}%</div>
+                    <div className="stat-label">
+                      正确率（{correctCount}/{total}）
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div className={isBase ? 'col-6 col-sm-3' : 'col-12 col-sm-4'}>
+                <div className="stat-card">
+                  <div className="stat-value">{formatMs(totalMs)}</div>
+                  <div className="stat-label">总用时</div>
+                </div>
+              </div>
+              <div className={isBase ? 'col-6 col-sm-3' : 'col-12 col-sm-4'}>
+                <div className="stat-card">
+                  <div className="stat-value">{formatMs(total ? totalMs / total : 0)}</div>
+                  <div className="stat-label">平均每题</div>
+                </div>
+              </div>
+            </div>
+
+            <section className="panel mt-4">
+              <h2 className="section-title">
+                <i className="bi bi-graph-up-arrow me-2" />
+                答题分析
+              </h2>
+              <div className="row g-4 align-items-center">
+                <div className="col-12 col-md-5">
+                  <DonutChart
+                    centerLabel={`${accuracy}%`}
+                    centerSub="正确率"
+                    segments={[
+                      { label: '答对', value: correctCount, color: 'var(--ok)' },
+                      { label: '答错', value: wrongCount, color: 'var(--bad)' },
+                      { label: '未作答', value: skippedCount, color: 'var(--faint)' },
+                    ]}
+                  />
+                </div>
+                <div className="col-12 col-md-7">
+                  <div className="chart-subtitle">每题用时趋势</div>
+                  <TimeLineChart times={records.map((r) => r.timeMs)} />
+                </div>
+              </div>
+              {qType === 'exam' && (
+                <div className="module-breakdown mt-4">
+                  <div className="chart-subtitle">分模块正确率 · 点击按钮切换下方答题记录的显示范围</div>
+                  <div className="module-chips">
                     <button
-                      key={r.label}
                       type="button"
-                      className={`module-chip${active ? ' active' : ''}`}
-                      aria-pressed={active}
-                      onClick={() => setModuleDetail(active ? null : mi)}
+                      className={`module-chip${moduleDetail === null ? ' active' : ''}`}
+                      aria-pressed={moduleDetail === null}
+                      onClick={() => setModuleDetail(null)}
                     >
-                      <span className="module-chip-label">{r.label}</span>
-                      <span className={`module-chip-acc ${accClassOf(pct)}`}>
-                        {ok}/{sub.length}
+                      <span className="module-chip-label">全部题目</span>
+                      <span className={`module-chip-acc ${accClassOf(accuracy)}`}>
+                        {correctCount}/{total}
                       </span>
                     </button>
-                  )
-                })}
-              </div>
+                    {moduleRanges.map((r, mi) => {
+                      const sub = records.slice(r.start, r.end)
+                      const ok = sub.filter((x) => !x.skipped && x.correct).length
+                      const pct = sub.length ? Math.round((ok / sub.length) * 100) : 0
+                      const active = moduleDetail === mi
+                      return (
+                        <button
+                          key={r.label}
+                          type="button"
+                          className={`module-chip${active ? ' active' : ''}`}
+                          aria-pressed={active}
+                          onClick={() => setModuleDetail(active ? null : mi)}
+                        >
+                          <span className="module-chip-label">{r.label}</span>
+                          <span className={`module-chip-acc ${accClassOf(pct)}`}>
+                            {ok}/{sub.length}
+                          </span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            <h2 className="section-title mt-4">
+              <i className="bi bi-list-check me-2" />
+              答题记录
+              {qType === 'exam' && (
+                <span className="record-module ms-2">
+                  {activeRange
+                    ? `${activeRange.label} · 第 ${activeRange.start + 1}-${activeRange.end} 题`
+                    : '全部题目'}
+                </span>
+              )}
+              {onlyWrong && <span className="record-module ms-2">仅看错题</span>}
+            </h2>
+            {activeRange &&
+              (() => {
+                const sub = records.slice(activeRange.start, activeRange.end)
+                const ok = sub.filter((x) => !x.skipped && x.correct).length
+                const skippedInModule = sub.filter((x) => x.skipped).length
+                const wrongInModule = sub.length - ok - skippedInModule
+                const ms = sub.reduce((s, x) => s + x.timeMs, 0)
+                const pct = sub.length ? Math.round((ok / sub.length) * 100) : 0
+                return (
+                  <div key={moduleDetail} className="module-detail-head fade-in">
+                    <span className="module-detail-title">
+                      <i className="bi bi-journal-text me-1" />
+                      {activeRange.label} 详情
+                    </span>
+                    <span>
+                      正确率 <strong className={accClassOf(pct)}>{pct}%</strong>（{ok}/{sub.length}）
+                    </span>
+                    {wrongInModule > 0 && <span>答错 {wrongInModule} 题</span>}
+                    {skippedInModule > 0 && <span>未答 {skippedInModule} 题</span>}
+                    <span>
+                      用时 {formatMs(ms)} · 平均 {formatMsShort(sub.length ? ms / sub.length : 0)}/题
+                    </span>
+                  </div>
+                )
+              })()}
+            <div className="result-records">
+              {visibleIndices.length === 0 ? (
+                <div className="no-wrong-tip">
+                  <i className="bi bi-patch-check me-2" />
+                  当前范围内没有错题，继续保持！
+                </div>
+              ) : (
+                visibleIndices.map((i) => renderRecordCard(questions[i], records[i], i))
+              )}
             </div>
-          )}
-        </section>
-
-        <h2 className="section-title mt-4">
-          <i className="bi bi-list-check me-2" />
-          答题记录
-          {qType === 'exam' && (
-            <span className="record-module ms-2">
-              {activeRange
-                ? `${activeRange.label} · 第 ${activeRange.start + 1}-${activeRange.end} 题`
-                : '全部题目'}
-            </span>
-          )}
-        </h2>
-        {activeRange &&
-          (() => {
-            const sub = records.slice(activeRange.start, activeRange.end)
-            const ok = sub.filter((x) => !x.skipped && x.correct).length
-            const skippedInModule = sub.filter((x) => x.skipped).length
-            const wrongInModule = sub.length - ok - skippedInModule
-            const ms = sub.reduce((s, x) => s + x.timeMs, 0)
-            const pct = sub.length ? Math.round((ok / sub.length) * 100) : 0
-            return (
-              <div key={moduleDetail} className="module-detail-head fade-in">
-                <span className="module-detail-title">
-                  <i className="bi bi-journal-text me-1" />
-                  {activeRange.label} 详情
-                </span>
-                <span>
-                  正确率 <strong className={accClassOf(pct)}>{pct}%</strong>（{ok}/{sub.length}）
-                </span>
-                {wrongInModule > 0 && <span>答错 {wrongInModule} 题</span>}
-                {skippedInModule > 0 && <span>未答 {skippedInModule} 题</span>}
-                <span>
-                  用时 {formatMs(ms)} · 平均 {formatMsShort(sub.length ? ms / sub.length : 0)}/题
-                </span>
-              </div>
-            )
-          })()}
-        <div className="result-records">
-          {questions
-            .slice(activeRange?.start ?? 0, activeRange?.end ?? questions.length)
-            .map((q, k) => {
-              const i = (activeRange?.start ?? 0) + k
-              return renderRecordCard(q, records[i], i)
-            })}
+          </div>
         </div>
-
-        <div className="d-flex justify-content-center gap-3 mt-4 flex-wrap">
+        <div className="result-actions">
           <button
             type="button"
             className="btn btn-primary btn-lg px-4"

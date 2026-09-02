@@ -1740,6 +1740,52 @@ button {
   white-space: nowrap;
 }
 
+/* 成绩单题号表：仅看错题开关 */
+.only-wrong-switch {
+  font-size: 0.85rem;
+  margin: 2px 0 14px;
+}
+
+.only-wrong-switch .form-check-label {
+  font-weight: 600;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* 成绩单：点击题号定位时滚动到卡片并短暂高亮 */
+.result-record {
+  scroll-margin-top: 16px;
+}
+
+.result-record.record-focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* 成绩单：开启「仅看错题」但没有错题时的提示 */
+.no-wrong-tip {
+  padding: 28px 16px;
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+  border: 1px dashed var(--card-border);
+  border-radius: var(--radius-md);
+  background: var(--card-bg);
+}
+
+/* 成绩单操作按钮：固定悬浮在页面右侧（竖排，位于主题切换按钮上方） */
+.result-actions {
+  position: fixed;
+  right: 22px;
+  bottom: 86px;
+  z-index: 1080;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  filter: drop-shadow(0 6px 16px rgba(15, 17, 21, 0.18));
+}
+
 /* ============================================================
    首页套卷横幅
    ============================================================ */
@@ -1837,6 +1883,11 @@ button {
   .theme-toggle {
     right: 16px;
     bottom: 16px;
+  }
+
+  .result-actions {
+    right: 16px;
+    bottom: 76px;
   }
 }
 
