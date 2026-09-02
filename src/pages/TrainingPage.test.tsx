@@ -303,12 +303,12 @@ describe('TrainingPage 成绩单题号表与仅看错题', () => {
     expect(cards()).toHaveLength(2)
 
     // 开启「仅看错题」→ 仅剩第 1 题（答错）
-    fireEvent.click(screen.getByLabelText('仅看错题'))
+    fireEvent.click(screen.getByRole('button', { name: '仅看错题' }))
     expect(cards()).toHaveLength(1)
     expect(cards()[0].querySelector('.record-no')?.textContent).toBe('题号 1')
 
     // 关闭后恢复全部记录
-    fireEvent.click(screen.getByLabelText('仅看错题'))
+    fireEvent.click(screen.getByRole('button', { name: '仅看错题' }))
     expect(cards()).toHaveLength(2)
   })
 
@@ -322,7 +322,7 @@ describe('TrainingPage 成绩单题号表与仅看错题', () => {
     fireEvent.click(screen.getByText('提交'))
     expect(screen.getByText(/正确率（2\/2）/)).toBeTruthy()
 
-    fireEvent.click(screen.getByLabelText('仅看错题'))
+    fireEvent.click(screen.getByRole('button', { name: '仅看错题' }))
     expect(container.querySelectorAll('.result-record')).toHaveLength(0)
     expect(screen.getByText(/没有错题/)).toBeTruthy()
 

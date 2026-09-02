@@ -1395,6 +1395,8 @@ button {
   font-weight: 700;
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  row-gap: 8px;
   margin-bottom: 14px;
 }
 
@@ -1740,16 +1742,43 @@ button {
   white-space: nowrap;
 }
 
-/* 成绩单题号表：仅看错题开关 */
-.only-wrong-switch {
+/* 答题记录标题栏右侧：仅看错题筛选按钮 */
+.only-wrong-toggle {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--card-border);
+  background: var(--chip-bg);
+  color: var(--muted);
   font-size: 0.85rem;
-  margin: 2px 0 14px;
+  font-weight: 700;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.15s ease;
 }
 
-.only-wrong-switch .form-check-label {
-  font-weight: 600;
-  color: var(--ink);
-  cursor: pointer;
+.only-wrong-toggle:hover {
+  color: var(--bad);
+  border-color: var(--bad);
+  transform: translateY(-1px);
+}
+
+.only-wrong-toggle.active {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: var(--bad);
+  color: var(--bad);
+  box-shadow: 0 2px 10px rgba(220, 38, 38, 0.18);
+}
+
+.only-wrong-toggle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 /* 成绩单：点击题号定位时滚动到卡片并短暂高亮 */

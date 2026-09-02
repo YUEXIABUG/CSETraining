@@ -419,19 +419,6 @@ export default function TrainingPage() {
               答对 {correctCount} · 答错 {wrongCount} · 未作答 {skippedCount}
             </div>
             <div className="axis-count text-muted small">点击题号可定位到对应记录</div>
-            <div className="form-check form-switch only-wrong-switch">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                role="switch"
-                id="only-wrong-switch"
-                checked={onlyWrong}
-                onChange={(e) => setOnlyWrong(e.target.checked)}
-              />
-              <label className="form-check-label" htmlFor="only-wrong-switch">
-                仅看错题
-              </label>
-            </div>
             {qType === 'exam' ? (
               <div className="progress-modules">
                 {moduleRanges.map((r) => (
@@ -587,7 +574,16 @@ export default function TrainingPage() {
                     : '全部题目'}
                 </span>
               )}
-              {onlyWrong && <span className="record-module ms-2">仅看错题</span>}
+              <button
+                type="button"
+                className={`only-wrong-toggle${onlyWrong ? ' active' : ''}`}
+                aria-pressed={onlyWrong}
+                title={onlyWrong ? '显示全部题目' : '仅看错题'}
+                onClick={() => setOnlyWrong((v) => !v)}
+              >
+                <i className={`bi ${onlyWrong ? 'bi-funnel-fill' : 'bi-funnel'}`} />
+                仅看错题
+              </button>
             </h2>
             {activeRange &&
               (() => {
