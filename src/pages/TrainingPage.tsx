@@ -401,7 +401,7 @@ export default function TrainingPage() {
     )
 
     return (
-      <div className="fade-in">
+      <div className="fade-in result-page">
         <div className="quiz-top">
           <div className="fw-bold fs-5 quiz-title-static">{meta.title} · 成绩单</div>
           <span className="timer-chip">共 {total} 题</span>
@@ -627,15 +627,12 @@ export default function TrainingPage() {
           </div>
         </div>
         <div className="result-actions">
-          <button
-            type="button"
-            className="btn btn-primary btn-lg px-4"
-            onClick={() => setRound((v) => v + 1)}
-          >
-            <i className="bi bi-arrow-repeat me-2" />
+          <button type="button" className="btn btn-primary result-fab" onClick={() => setRound((v) => v + 1)}>
+            <i className="bi bi-arrow-repeat" />
             再来一组
           </button>
-          <button type="button" className="btn btn-outline-secondary btn-lg px-4" onClick={() => navigate('/')}>
+          <button type="button" className="btn result-fab result-fab-ghost" onClick={() => navigate('/')}>
+            <i className="bi bi-house-door" />
             返回首页
           </button>
         </div>

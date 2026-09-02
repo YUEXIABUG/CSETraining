@@ -1773,7 +1773,7 @@ button {
   background: var(--card-bg);
 }
 
-/* 成绩单操作按钮：固定悬浮在页面右侧（竖排，位于主题切换按钮上方） */
+/* 成绩单操作按钮：固定悬浮在页面右侧（胶囊样式，叠放在主题切换按钮上方） */
 .result-actions {
   position: fixed;
   right: 22px;
@@ -1783,7 +1783,60 @@ button {
   flex-direction: column;
   align-items: stretch;
   gap: 10px;
-  filter: drop-shadow(0 6px 16px rgba(15, 17, 21, 0.18));
+}
+
+.result-fab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 136px;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 0.95rem;
+  box-shadow: 0 6px 18px rgba(15, 17, 21, 0.16);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    color 0.25s ease;
+}
+
+.result-fab:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(15, 17, 21, 0.22);
+}
+
+.result-fab:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(15, 17, 21, 0.18);
+}
+
+.result-fab .bi {
+  font-size: 1.05rem;
+}
+
+.result-fab-ghost {
+  background-color: var(--card-bg);
+  border-color: var(--card-border);
+  color: var(--ink);
+}
+
+.result-fab-ghost:hover {
+  background-color: var(--card-bg);
+  border-color: var(--accent-border);
+  color: var(--primary);
+}
+
+.result-fab-ghost:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* 成绩单页面底部预留空间，滚动到底时最后一条记录不会被悬浮按钮遮挡 */
+.result-page {
+  padding-bottom: 96px;
 }
 
 /* ============================================================
@@ -1887,7 +1940,11 @@ button {
 
   .result-actions {
     right: 16px;
-    bottom: 76px;
+    bottom: 72px;
+  }
+
+  .result-page {
+    padding-bottom: 140px;
   }
 }
 

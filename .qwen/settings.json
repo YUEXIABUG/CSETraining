@@ -25,7 +25,9 @@
       "Bash(git status *)",
       "Bash(echo *)",
       "Bash(cat *)",
-      "Bash(git diff *)"
+      "Bash(git diff *)",
+      "Read(C:\\temp-cse-shot/**)",
+      "Bash(rmdir *)"
     ]
   },
   "$version": 4
