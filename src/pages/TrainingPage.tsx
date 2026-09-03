@@ -99,6 +99,9 @@ export default function TrainingPage() {
   const [showUnanswered, setShowUnanswered] = useState(false)
   const [unanswered, setUnanswered] = useState<number[]>([])
   const pendingRef = useRef<Draft[] | null>(null)
+  /** 暂停中：弹窗实时显示已离开时间，暂停期间各计时均不累计 */
+  const [paused, setPaused] = useState(false)
+  const pauseStartRef = useRef<number | null>(null)
 
   const timeAccumRef = useRef<number[]>([])
   const qStartRef = useRef(Date.now())
@@ -123,6 +126,8 @@ export default function TrainingPage() {
     setShowExit(false)
     setShowUnanswered(false)
     setUnanswered([])
+    setPaused(false)
+    pauseStartRef.current = null
     pendingRef.current = null
     timeAccumRef.current = questions.map(() => 0)
     qStartRef.current = Date.now()
@@ -293,6 +298,30 @@ export default function TrainingPage() {
     } else {
       beginSubmit(cleared)
     }
+  }
+
+  /* ---------- 暂停 / 继续 ---------- */
+
+  const pauseQuiz = () => {
+    pauseStartRef.current = Date.now()
+    setPaused(true)
+  }
+
+  /** 继续答题：把起点时钟整体后移暂停时长，暂停期间即不计入任何计时 */
+  const resumeQuiz = () => {
+    if (pauseStartRef.current !== null) {
+      const dur = Date.now() - pauseStartRef.current
+      qStartRef.current += dur
+      totalStartRef.current += dur
+      pauseStartRef.current = null
+    }
+    setPaused(false)
+  }
+
+  const exitFromPause = () => {
+    pauseStartRef.current = null
+    setPaused(false)
+    navigate('/')
   }
 
   /* ---------- 成绩单 ---------- */
@@ -638,8 +667,10 @@ export default function TrainingPage() {
   }
 
   /* ---------- 答题 ---------- */
-  const totalMs = now - totalStartRef.current
-  const qMs = (timeAccumRef.current[index] ?? 0) + (now - qStartRef.current)
+  /** 有效当前时间：暂停中冻结在按下暂停的瞬间，界面计时随之停住 */
+  const clockNow = paused && pauseStartRef.current !== null ? pauseStartRef.current : now
+  const totalMs = clockNow - totalStartRef.current
+  const qMs = (timeAccumRef.current[index] ?? 0) + (clockNow - qStartRef.current)
 
   const statusOf = (i: number): ChipStatus => {
     if (isAnswered(questions[i], drafts[i])) return 'answered'
@@ -649,7 +680,7 @@ export default function TrainingPage() {
 
   const chipTime = (i: number): number => {
     let t = timeAccumRef.current[i] ?? 0
-    if (i === index) t += now - qStartRef.current
+    if (i === index) t += clockNow - qStartRef.current
     return t
   }
 
@@ -690,6 +721,15 @@ export default function TrainingPage() {
           <span className="timer-chip d-none d-sm-inline-block">
             总计 <strong>{formatMs(totalMs)}</strong>
           </span>
+          <button
+            type="button"
+            className="btn btn-outline-secondary btn-sm"
+            title="暂停，暂停期间不计入用时"
+            onClick={pauseQuiz}
+          >
+            <i className="bi bi-pause-fill me-1" />
+            暂停
+          </button>
         </div>
       </div>
 
@@ -884,6 +924,34 @@ export default function TrainingPage() {
               </button>
               <button type="button" className="btn btn-primary" onClick={confirmSubmit}>
                 仍要提交
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {paused && (
+        <div className="modal-overlay">
+          <div className="modal-card">
+            <div className="modal-title">
+              <i className="bi bi-pause-circle me-2" />
+              已暂停
+            </div>
+            <div className="modal-body">
+              <div className="pause-away">
+                <span className="pause-away-label">已离开</span>
+                <strong>{formatMs(now - (pauseStartRef.current ?? now))}</strong>
+              </div>
+              暂停期间计时已停止，调整好状态再继续吧。
+            </div>
+            <div className="modal-actions">
+              <button type="button" className="btn btn-outline-danger" onClick={exitFromPause}>
+                <i className="bi bi-box-arrow-right me-1" />
+                退出练习
+              </button>
+              <button type="button" className="btn btn-primary" onClick={resumeQuiz}>
+                <i className="bi bi-play-fill me-1" />
+                继续答题
               </button>
             </div>
           </div>

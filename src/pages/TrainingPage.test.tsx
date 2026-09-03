@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { act } from 'react'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -11,6 +12,7 @@ import type {
   QuestionType,
   ShareGapQuestion,
 } from '../types'
+import HomePage from './HomePage'
 import TrainingPage from './TrainingPage'
 
 afterEach(cleanup)
@@ -81,6 +83,7 @@ function renderTraining(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
       <Routes>
+        <Route path="/" element={<HomePage />} />
         <Route path="/train/:type" element={<TrainingPage />} />
       </Routes>
     </MemoryRouter>,
@@ -416,6 +419,72 @@ describe('TrainingPage 新选择题型', () => {
     // SG1：rB 为正时展示为 (rA% − rB%)，分母为 (1 + rA%)
     expect(text).toContain('(2125 ÷ 3640) × (18.7% − 28.2%) ÷ (1 + 18.7%)')
     expect(text).toContain('下降 4.67 个百分点')
+  })
+})
+
+describe('TrainingPage 暂停功能', () => {
+  it('点击「暂停」弹出暂停弹窗，已离开时间实时更新，「继续答题」后返回答题', () => {
+    vi.useFakeTimers()
+    try {
+      renderTraining('/train/multiply?count=2')
+
+      fireEvent.click(screen.getByText('暂停'))
+      expect(screen.getByText('已暂停')).toBeTruthy()
+      expect(screen.getByText('已离开')).toBeTruthy()
+      expect(screen.getByText('退出练习')).toBeTruthy()
+      expect(screen.getByText('继续答题')).toBeTruthy()
+
+      // 离开 30 秒后，弹窗中的已离开时间随之更新
+      act(() => vi.advanceTimersByTime(30_000))
+      expect(screen.getByText('30 秒')).toBeTruthy()
+
+      fireEvent.click(screen.getByText('继续答题'))
+      expect(screen.queryByText('已暂停')).toBeNull()
+      expect(screen.getByPlaceholderText('输入答案')).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('暂停期间不计入每题用时与总用时', () => {
+    vi.useFakeTimers()
+    try {
+      renderTraining('/train/addsub?count=1')
+
+      // 作答 5 秒后暂停，离开 1 分钟再继续
+      act(() => vi.advanceTimersByTime(5_000))
+      fireEvent.click(screen.getByText('暂停'))
+      act(() => vi.advanceTimersByTime(60_000))
+      fireEvent.click(screen.getByText('继续答题'))
+
+      fireEvent.change(screen.getByPlaceholderText('输入答案'), { target: { value: '10000' } })
+      fireEvent.click(screen.getByText('提交'))
+      expect(screen.getByText(/成绩单/)).toBeTruthy()
+
+      // 用时只包含暂停前的 5 秒，不含暂停的 1 分钟
+      const text = document.body.textContent ?? ''
+      expect(text).toContain('5 秒')
+      expect(text).not.toContain('1 分')
+      expect(text).not.toContain('65 秒')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('暂停弹窗点「退出练习」返回首页', () => {
+    vi.useFakeTimers()
+    try {
+      renderTraining('/train/multiply?count=2')
+
+      fireEvent.click(screen.getByText('暂停'))
+      fireEvent.click(screen.getByText('退出练习'))
+      // 回到首页：答题输入框消失，出现首页的每组题数设置
+      expect(screen.queryByPlaceholderText('输入答案')).toBeNull()
+      expect(screen.queryByText('已暂停')).toBeNull()
+      expect(screen.getByText('每组题数')).toBeTruthy()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })
 

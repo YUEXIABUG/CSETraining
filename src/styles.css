@@ -1318,7 +1318,7 @@ button {
 }
 
 /* ============================================================
-   弹窗（离开确认 / 未答提醒）
+   弹窗（离开确认 / 未答提醒 / 暂停）
    ============================================================ */
 
 .modal-overlay {
@@ -1384,6 +1384,33 @@ button {
   background: rgba(220, 38, 38, 0.12);
   color: var(--bad);
   border: 1px solid var(--bad);
+}
+
+/* 暂停弹窗：已离开时间（终端风大字） */
+.pause-away {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 12px 16px;
+  background: var(--terminal-bg);
+  border: 1px solid var(--terminal-border);
+  border-radius: 12px;
+  color: var(--terminal-text);
+  font-family: var(--font-mono);
+}
+
+.pause-away-label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  opacity: 0.75;
+}
+
+.pause-away strong {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--terminal-green);
+  font-variant-numeric: tabular-nums;
 }
 
 /* ============================================================
@@ -2739,13 +2766,7 @@ button {
   border: 1px solid var(--accent-border);
 }
 
-/* ---------- 隐私便签 + 印章 ---------- */
-
-.about-privacy {
-  background: var(--note-bg);
-  border-color: var(--note-border);
-  color: var(--note-ink);
-}
+/* ---------- 隐私与数据说明 ---------- */
 
 .about-note {
   line-height: 1.9;
@@ -2753,36 +2774,6 @@ button {
 
 .about-note p {
   margin-bottom: 10px;
-}
-
-/* 红色圆章 */
-.about-stamp {
-  position: absolute;
-  top: 16px;
-  right: 20px;
-  width: 74px;
-  height: 74px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 3px solid var(--bad);
-  border-radius: 50%;
-  color: var(--bad);
-  font-size: 1.02rem;
-  font-weight: 800;
-  letter-spacing: 2px;
-  opacity: 0.75;
-  transform: rotate(14deg);
-  pointer-events: none;
-}
-
-.about-stamp::after {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  border: 1.5px dashed var(--bad);
-  border-radius: 50%;
-  opacity: 0.8;
 }
 
 /* ---------- 判分勾选清单 ---------- */
@@ -2852,15 +2843,6 @@ button {
 
   .about-card {
     padding: 22px 16px 18px;
-  }
-
-  .about-stamp {
-    top: 10px;
-    right: 10px;
-    width: 58px;
-    height: 58px;
-    font-size: 0.82rem;
-    letter-spacing: 1px;
   }
 }
 
