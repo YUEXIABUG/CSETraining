@@ -1931,6 +1931,13 @@ button {
   font-size: 1.15rem;
 }
 
+.exam-banner-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
 .exam-banner-cta {
   display: inline-flex;
   align-items: center;
@@ -1938,6 +1945,73 @@ button {
   color: var(--primary);
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+/* 自定义套卷入口按钮 */
+.exam-custom-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  margin-top: 10px;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--accent-border);
+  background: transparent;
+  color: var(--primary);
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.exam-custom-btn:hover {
+  background: var(--accent-soft);
+  border-color: var(--primary);
+}
+
+.exam-custom-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+/* 自定义套卷弹窗：题型题数设置 */
+.exam-builder-rows {
+  display: flex;
+  flex-direction: column;
+}
+
+.exam-builder-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 0;
+  cursor: pointer;
+}
+
+.exam-builder-row + .exam-builder-row {
+  border-top: 1px dashed var(--card-border);
+}
+
+.exam-builder-label {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.exam-builder-input {
+  width: 110px;
+  text-align: center;
+  font-family: var(--font-mono);
+}
+
+.exam-builder-total {
+  color: var(--muted);
+}
+
+.exam-builder-total strong {
+  color: var(--primary);
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
 }
 
 /* ============================================================

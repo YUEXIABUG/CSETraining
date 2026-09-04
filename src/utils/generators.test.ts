@@ -12,6 +12,7 @@ import {
   genShareGap,
   generateExam,
   isWithinTolerance,
+  type ExamSegment,
 } from './generators'
 
 describe('genAddSub 多位加减法', () => {
@@ -235,6 +236,36 @@ describe('generateExam 套卷模式', () => {
     for (const c of CATEGORIES) {
       expect(types).toContain(c.type)
     }
+  })
+
+  it('支持自定义分段：按分段顺序与题数出题', () => {
+    const segments: ExamSegment[] = [
+      { label: '加减法', count: 2, type: 'addsub' },
+      { label: '乘法运算', count: 3, type: 'multiply' },
+      { label: '基期增量', count: 1, type: 'baseperiod' },
+    ]
+    const qs = generateExam(segments)
+    expect(qs).toHaveLength(6)
+    expect(qs.filter((q) => q.type === 'addsub')).toHaveLength(2)
+    expect(qs.filter((q) => q.type === 'multiply')).toHaveLength(3)
+    expect(qs.filter((q) => q.type === 'baseperiod')).toHaveLength(1)
+    // 出题顺序与分段顺序一致
+    expect(qs[0].type).toBe('addsub')
+    expect(qs[1].type).toBe('addsub')
+    expect(qs[2].type).toBe('multiply')
+    expect(qs[5].type).toBe('baseperiod')
+  })
+
+  it('自定义分段的 examModuleRanges：跳过 0 题分段且下标连续', () => {
+    const ranges = examModuleRanges([
+      { label: '加减法', count: 2, type: 'addsub' },
+      { label: '比较大小', count: 0, type: 'fraction' },
+      { label: '乘法运算', count: 3, type: 'multiply' },
+    ])
+    expect(ranges).toEqual([
+      { label: '加减法', start: 0, end: 2 },
+      { label: '乘法运算', start: 2, end: 5 },
+    ])
   })
 })
 

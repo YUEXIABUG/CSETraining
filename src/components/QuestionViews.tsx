@@ -79,7 +79,7 @@ export function FractionView({
           ＜<small>右边更大</small>
         </button>
       </div>
-      <div className="hint-text mt-3">比较两个分数的大小（分子 ÷ 分母）· 点击选项后自动进入下一题</div>
+      <div className="hint-text mt-3">选对即得分 · 点击选项后自动进入下一题</div>
     </div>
   )
 }
@@ -194,12 +194,7 @@ export function ChoiceView({
           </button>
         ))}
       </div>
-      <div className="hint-text mt-3 text-center">
-        {isGap
-          ? '比重差 = (A ÷ B) × (rA − rB) ÷ (1 + rA)，rA ＞ rB 时比重上升'
-          : '基期比重 = (A ÷ B) × (1 + rB) ÷ (1 + rA)'}
-        <span className="d-block mt-1">点击选项后自动进入下一题</span>
-      </div>
+      <div className="hint-text mt-3 text-center">选对即得分 · 点击选项后自动进入下一题</div>
     </div>
   )
 }

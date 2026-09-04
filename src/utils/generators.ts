@@ -258,13 +258,20 @@ const GENERATORS: Record<Exclude<QuestionType, 'exam'>, () => Question> = {
   sharegap: genShareGap,
 }
 
-export function generateSet(type: QuestionType, count: number): Question[] {
-  if (type === 'exam') return generateExam()
+export function generateSet(type: QuestionType, count: number, examSegments?: ExamSegment[]): Question[] {
+  if (type === 'exam') return generateExam(examSegments)
   return Array.from({ length: count }, () => GENERATORS[type]())
 }
 
-/** 套卷模式分段定义（顺序即出题顺序）；type 为该分段对应的单项训练模块 */
-export const EXAM_SEGMENTS: { label: string; count: number; type: QuestionType }[] = [
+/** 套卷分段定义（顺序即出题顺序）；type 为该分段对应的单项训练模块 */
+export interface ExamSegment {
+  label: string
+  count: number
+  type: Exclude<QuestionType, 'exam'>
+}
+
+/** 默认套卷：4 加减法 + 4 比大小 + 10 乘法 + 2 基期比重 + 2 比重差 + 12 基期增量 */
+export const EXAM_SEGMENTS: ExamSegment[] = [
   { label: '加减法', count: 4, type: 'addsub' },
   { label: '比较大小', count: 4, type: 'fraction' },
   { label: '乘法运算', count: 10, type: 'multiply' },
@@ -273,32 +280,41 @@ export const EXAM_SEGMENTS: { label: string; count: number; type: QuestionType }
   { label: '基期增量', count: 12, type: 'baseperiod' },
 ]
 
-/** 套卷：4 加减法 + 4 比大小 + 10 乘法 + 2 基期比重 + 2 比重差 + 12 基期增量（6 道 0~20%、2 道 20~70%、4 道 -15~0） */
-export function generateExam(): Question[] {
+/**
+ * 套卷出题：不传分段时使用默认 34 题组合，
+ * 其中 12 道基期增量为 6 道 [0,20%)、2 道 [20%,70%]、4 道 [-15%,0)（区间互不重叠）；
+ * 传入自定义分段时按分段顺序出题，基期增量使用默认增长率区间。
+ */
+export function generateExam(segments?: ExamSegment[]): Question[] {
   const qs: Question[] = []
   const push = (g: () => Question, n: number) => {
     for (let i = 0; i < n; i++) qs.push(g())
   }
-  push(genAddSub, 4)
-  push(genFraction, 4)
-  push(genMultiply, 10)
-  push(genBasePeriodShare, 2)
-  push(genShareGap, 2)
-  // 12 道基期增量：6 道 [0,20%)、2 道 [20%,70%]、4 道 [-15%,0)，区间互不重叠
-  push(() => genBasePeriod(0, 19.9), 6)
-  push(() => genBasePeriod(20, 70), 2)
-  push(() => genBasePeriod(-15, -0.1), 4)
+  if (!segments) {
+    push(genAddSub, 4)
+    push(genFraction, 4)
+    push(genMultiply, 10)
+    push(genBasePeriodShare, 2)
+    push(genShareGap, 2)
+    push(() => genBasePeriod(0, 19.9), 6)
+    push(() => genBasePeriod(20, 70), 2)
+    push(() => genBasePeriod(-15, -0.1), 4)
+    return qs
+  }
+  for (const s of segments) push(GENERATORS[s.type], s.count)
   return qs
 }
 
-/** 套卷各模块在题列中的起止下标 */
-export function examModuleRanges(): { label: string; start: number; end: number }[] {
+/** 套卷各模块在题列中的起止下标（题数为 0 的分段不出现） */
+export function examModuleRanges(segments: ExamSegment[] = EXAM_SEGMENTS): { label: string; start: number; end: number }[] {
   let start = 0
-  return EXAM_SEGMENTS.map((s) => {
-    const range = { label: s.label, start, end: start + s.count }
-    start += s.count
-    return range
-  })
+  return segments
+    .filter((s) => s.count > 0)
+    .map((s) => {
+      const range = { label: s.label, start, end: start + s.count }
+      start += s.count
+      return range
+    })
 }
 
 /** 填空题判卷：相对误差在 tolerance（默认 1%）以内判对 */

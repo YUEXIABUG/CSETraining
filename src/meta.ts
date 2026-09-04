@@ -47,7 +47,7 @@ export const CATEGORIES: CategoryMeta[] = [
   },
 ]
 
-/** 套卷模式（固定 34 题，分模块出题） */
+/** 套卷模式（默认 34 题，分模块出题，支持自定义各题型题数） */
 export const EXAM_CATEGORY: CategoryMeta = {
   type: 'exam',
   title: '套卷模式',

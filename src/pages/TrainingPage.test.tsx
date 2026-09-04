@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { act } from 'react'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type {
@@ -12,6 +12,7 @@ import type {
   QuestionType,
   ShareGapQuestion,
 } from '../types'
+import type { ExamSegment } from '../utils/generators'
 import HomePage from './HomePage'
 import TrainingPage from './TrainingPage'
 
@@ -67,13 +68,13 @@ vi.mock('../utils/generators', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../utils/generators')>()
   return {
     ...actual,
-    generateSet: (type: QuestionType, count: number) => {
+    generateSet: (type: QuestionType, count: number, examSegments?: ExamSegment[]) => {
       if (type === 'baseperiod') return [BQ1]
       if (type === 'addsub') return [ASQ1]
       if (type === 'fraction') return Array.from({ length: count }, () => FQ1)
       if (type === 'baseperiodshare') return [BPS1]
       if (type === 'sharegap') return [SG1]
-      if (type === 'exam') return actual.generateExam()
+      if (type === 'exam') return actual.generateExam(examSegments)
       return [MQ1, MQ2]
     },
   }
@@ -529,5 +530,70 @@ describe('TrainingPage 成绩记录与进度样式', () => {
     // 直接点提交触发未答提醒：第 2 题仍是「看了没答」红色标记
     fireEvent.click(screen.getByText('提交'))
     expect(container.querySelectorAll('.prog-chip.st-viewed .chip-mark')).toHaveLength(1)
+  })
+})
+
+describe('自定义套卷', () => {
+  it('URL 组卷参数生效：按自定义题数出题，进度条仅显示配置的模块', () => {
+    renderTraining('/train/exam?addsub=2&multiply=1')
+
+    expect(screen.getByText(/第 1 \/ 3 题/)).toBeTruthy()
+    expect(screen.getByText('加减法')).toBeTruthy()
+    expect(screen.getByText('乘法运算')).toBeTruthy()
+    // 未配置的题型不出现在进度条中
+    expect(screen.queryByText('比较大小')).toBeNull()
+    expect(screen.queryByText('基期比重')).toBeNull()
+    expect(screen.queryByText('比重差')).toBeNull()
+    expect(screen.queryByText('基期增量')).toBeNull()
+    // 两个模块分别 2 题与 1 题（尚未作答）
+    expect(screen.getByText('0/2')).toBeTruthy()
+    expect(screen.getByText('0/1')).toBeTruthy()
+  })
+
+  it('组卷参数全为 0 时回退默认套卷', () => {
+    renderTraining('/train/exam?addsub=0&multiply=0')
+    expect(screen.getByText(/第 1 \/ 34 题/)).toBeTruthy()
+  })
+
+  it('首页弹窗自定义题型题数后开始考试，并记住组卷设置', () => {
+    sessionStorage.removeItem('cse-training-exam-custom')
+    renderTraining('/')
+
+    fireEvent.click(screen.getByText('自定义套卷 · 题型与题数'))
+    expect(screen.getByText('自定义套卷')).toBeTruthy()
+
+    fireEvent.change(screen.getByLabelText('加减法'), { target: { value: '2' } })
+    fireEvent.change(screen.getByLabelText('比较大小'), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText('乘法运算'), { target: { value: '1' } })
+    fireEvent.change(screen.getByLabelText('基期比重'), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText('比重差'), { target: { value: '0' } })
+    fireEvent.change(screen.getByLabelText('基期增量'), { target: { value: '0' } })
+    expect(screen.getByText('共 3 题')).toBeTruthy()
+
+    // 点击弹窗内的「开始考试」（横幅上也有同名文案）
+    const modal = document.querySelector<HTMLElement>('.modal-card')!
+    fireEvent.click(within(modal).getByText('开始考试'))
+
+    // 跳转到按自定义配置出题的套卷
+    expect(screen.getByText(/第 1 \/ 3 题/)).toBeTruthy()
+    // 组卷设置已写入会话存储
+    expect(JSON.parse(sessionStorage.getItem('cse-training-exam-custom')!)).toMatchObject({
+      addsub: 2,
+      multiply: 1,
+      fraction: 0,
+    })
+  })
+
+  it('弹窗「恢复默认」还原为默认 34 题组合', () => {
+    sessionStorage.removeItem('cse-training-exam-custom')
+    renderTraining('/')
+
+    fireEvent.click(screen.getByText('自定义套卷 · 题型与题数'))
+    fireEvent.change(screen.getByLabelText('加减法'), { target: { value: '0' } })
+    expect(screen.getByText('共 30 题')).toBeTruthy()
+
+    fireEvent.click(screen.getByText('恢复默认'))
+    expect(screen.getByText('共 34 题')).toBeTruthy()
+    expect((screen.getByLabelText('加减法') as HTMLInputElement).value).toBe('4')
   })
 })

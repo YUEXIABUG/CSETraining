@@ -18,7 +18,13 @@ import { ThemeToggle } from '../components/ThemeToggle'
 import { categoryOf, isQuestionType } from '../meta'
 import type { AnswerRecord, Question, QuestionType } from '../types'
 import { formatMs, formatMsShort } from '../utils/display'
-import { examModuleRanges, generateSet, isWithinTolerance } from '../utils/generators'
+import {
+  EXAM_SEGMENTS,
+  examModuleRanges,
+  generateSet,
+  isWithinTolerance,
+  type ExamSegment,
+} from '../utils/generators'
 import { appendSession } from '../utils/history'
 
 /** 每题的草稿答案（切换题目时保留，可回看修改） */
@@ -55,6 +61,27 @@ function isAnswered(q: Question, d: Draft | undefined): boolean {
 
 const LETTERS = ['A', 'B', 'C', 'D']
 
+/** 自定义套卷单一题型题数上限（与单项训练的每组题数上限一致） */
+const EXAM_TYPE_MAX = 100
+
+/**
+ * 解析 URL 中的套卷组卷参数（如 ?addsub=4&multiply=10）。
+ * 无任何组卷参数或有效题数均为 0 时返回 undefined，使用默认套卷。
+ */
+function parseExamSegments(searchParams: URLSearchParams): ExamSegment[] | undefined {
+  let hasParam = false
+  const segments: ExamSegment[] = []
+  for (const s of EXAM_SEGMENTS) {
+    const raw = searchParams.get(s.type)
+    if (raw === null) continue
+    hasParam = true
+    const v = Number.parseInt(raw, 10)
+    const count = Number.isFinite(v) ? Math.min(EXAM_TYPE_MAX, Math.max(0, v)) : 0
+    if (count > 0) segments.push({ label: s.label, type: s.type, count })
+  }
+  return hasParam && segments.length > 0 ? segments : undefined
+}
+
 /** 荧光笔涂抹标记：三笔半透明粗描边组成「Z」字，笔画交叠处颜色加深，笔锋略微画出圆圈 */
 function ChipMark({ color }: { color: string }) {
   return (
@@ -76,9 +103,12 @@ export default function TrainingPage() {
   const parsed = Number.parseInt(searchParams.get('count') ?? '5', 10)
   const count = Number.isFinite(parsed) ? Math.min(100, Math.max(1, parsed)) : 5
 
+  /** 套卷组卷配置：URL 无组卷参数时为默认套卷 */
+  const examSegments = useMemo(() => parseExamSegments(searchParams), [searchParams])
+
   const [round, setRound] = useState(0)
-  const questions = useMemo(() => generateSet(qType, count), [qType, count, round])
-  const moduleRanges = useMemo(() => (qType === 'exam' ? examModuleRanges() : []), [qType])
+  const questions = useMemo(() => generateSet(qType, count, examSegments), [qType, count, round, examSegments])
+  const moduleRanges = useMemo(() => (qType === 'exam' ? examModuleRanges(examSegments) : []), [qType, examSegments])
 
   const [index, setIndex] = useState(0)
   const [drafts, setDrafts] = useState<Draft[]>([])
