@@ -1,16 +1,35 @@
-import { useEffect, useState } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
+} from 'react'
 import { useNavigate } from 'react-router-dom'
+import { CountStepper } from '../components/CountStepper'
 import { ThemeToggle } from '../components/ThemeToggle'
 import { CATEGORIES, EXAM_CATEGORY } from '../meta'
-import type { QuestionType } from '../types'
-import { EXAM_SEGMENTS } from '../utils/generators'
+import { EXAM_SEGMENTS, type ExamSegment } from '../utils/generators'
 
 const PRESETS = [5, 10, 15, 20]
 const STORAGE_KEY = 'cse-training-count'
 /** 自定义套卷：各题型题数（0 表示不包含该题型） */
-type ExamCounts = Partial<Record<QuestionType, number>>
+type ExamType = ExamSegment['type']
+type ExamCounts = Partial<Record<ExamType, number>>
 const EXAM_CUSTOM_KEY = 'cse-training-exam-custom'
+const EXAM_ORDER_KEY = 'cse-training-exam-order'
 const EXAM_TYPE_MAX = 100
+
+const SEGMENT_BY_TYPE = new Map<ExamType, ExamSegment>(
+  EXAM_SEGMENTS.map((s) => [s.type, s] as const),
+)
+const DEFAULT_EXAM_ORDER = EXAM_SEGMENTS.map((s) => s.type)
+
+interface DropTarget {
+  type: ExamType
+  /** true 表示插入到目标题型之后，false 表示之前 */
+  after: boolean
+}
 
 function loadCount(): number {
   const saved = Number(sessionStorage.getItem(STORAGE_KEY))
@@ -39,15 +58,69 @@ function loadExamCounts(): ExamCounts {
   }
 }
 
+/** 读取自定义套卷的题型顺序（缺失 / 非法的题型按默认顺序补齐） */
+function loadExamOrder(): ExamType[] {
+  try {
+    const raw = sessionStorage.getItem(EXAM_ORDER_KEY)
+    if (!raw) return [...DEFAULT_EXAM_ORDER]
+    const parsed = JSON.parse(raw) as unknown
+    if (!Array.isArray(parsed)) return [...DEFAULT_EXAM_ORDER]
+    const order: ExamType[] = []
+    for (const v of parsed) {
+      if (typeof v !== 'string') continue
+      const type = v as ExamType
+      if (SEGMENT_BY_TYPE.has(type) && !order.includes(type)) order.push(type)
+    }
+    for (const type of DEFAULT_EXAM_ORDER) {
+      if (!order.includes(type)) order.push(type)
+    }
+    return order
+  } catch {
+    return [...DEFAULT_EXAM_ORDER]
+  }
+}
+
+/** 将某一题型移动到目标题型之前 / 之后，返回新顺序 */
+function moveExamType(
+  order: ExamType[],
+  fromType: ExamType,
+  targetType: ExamType,
+  after: boolean,
+): ExamType[] {
+  const from = order.indexOf(fromType)
+  if (from < 0 || fromType === targetType || !order.includes(targetType)) return order
+  const next = [...order]
+  next.splice(from, 1)
+  const insertAt = next.indexOf(targetType) + (after ? 1 : 0)
+  next.splice(insertAt, 0, fromType)
+  return next
+}
+
 export default function HomePage() {
   const navigate = useNavigate()
   const [count, setCount] = useState(loadCount)
   const [showExamBuilder, setShowExamBuilder] = useState(false)
   const [examCounts, setExamCounts] = useState<ExamCounts>(loadExamCounts)
+  const [examOrder, setExamOrder] = useState<ExamType[]>(loadExamOrder)
+  const [dragType, setDragType] = useState<ExamType | null>(null)
+  const [dropTarget, setDropTarget] = useState<DropTarget | null>(null)
+  const dragRef = useRef<{
+    type: ExamType
+    pointerId: number
+    startY: number
+    moved: boolean
+    drop: DropTarget | null
+  } | null>(null)
+  /** 记录按下时是否点在遮罩本身，避免拖动手柄后在弹窗外松开时误关闭弹窗 */
+  const overlayDownRef = useRef(false)
 
   useEffect(() => {
     sessionStorage.setItem(STORAGE_KEY, String(count))
   }, [count])
+
+  useEffect(() => {
+    sessionStorage.setItem(EXAM_ORDER_KEY, JSON.stringify(examOrder))
+  }, [examOrder])
 
   const applyCount = (v: number) => {
     if (!Number.isFinite(v)) return
@@ -56,9 +129,12 @@ export default function HomePage() {
 
   const startExam = () => navigate('/train/exam')
 
-  const examTotal = EXAM_SEGMENTS.reduce((s, seg) => s + (examCounts[seg.type] ?? 0), 0)
+  const orderedSegments = examOrder
+    .map((type) => SEGMENT_BY_TYPE.get(type))
+    .filter((s): s is ExamSegment => Boolean(s))
+  const examTotal = orderedSegments.reduce((s, seg) => s + (examCounts[seg.type] ?? 0), 0)
 
-  const applyExamCount = (type: QuestionType, v: number) => {
+  const applyExamCount = (type: ExamType, v: number) => {
     if (!Number.isFinite(v)) return
     setExamCounts((cs) => ({ ...cs, [type]: Math.min(EXAM_TYPE_MAX, Math.max(0, Math.round(v))) }))
   }
@@ -66,10 +142,106 @@ export default function HomePage() {
   const startCustomExam = () => {
     if (examTotal <= 0) return
     sessionStorage.setItem(EXAM_CUSTOM_KEY, JSON.stringify(examCounts))
-    const query = EXAM_SEGMENTS.filter((s) => (examCounts[s.type] ?? 0) > 0)
-      .map((s) => `${s.type}=${examCounts[s.type]}`)
-      .join('&')
-    navigate(`/train/exam?${query}`)
+    sessionStorage.setItem(EXAM_ORDER_KEY, JSON.stringify(examOrder))
+    const chosen = orderedSegments.filter((s) => (examCounts[s.type] ?? 0) > 0)
+    const query = chosen.map((s) => `${s.type}=${examCounts[s.type]}`).join('&')
+    navigate(`/train/exam?${query}&order=${chosen.map((s) => s.type).join(',')}`)
+  }
+
+  const beginDrag = (type: ExamType, e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return
+    e.preventDefault()
+    dragRef.current = { type, pointerId: e.pointerId, startY: e.clientY, moved: false, drop: null }
+    setDragType(type)
+    setDropTarget(null)
+  }
+
+  const finishDrag = () => {
+    const drag = dragRef.current
+    const drop = drag?.drop
+    if (drag && drop) {
+      setExamOrder((prev) => moveExamType(prev, drag.type, drop.type, drop.after))
+    }
+    dragRef.current = null
+    setDragType(null)
+    setDropTarget(null)
+  }
+
+  const cancelDrag = () => {
+    dragRef.current = null
+    setDragType(null)
+    setDropTarget(null)
+  }
+
+  // 拖动中监听整个窗口：指针移出弹窗或松开在弹窗外也能正确结束
+  useEffect(() => {
+    if (!dragType) return
+    const rowAt = (x: number, y: number): HTMLElement | null => {
+      if (typeof document.elementFromPoint !== 'function') return null
+      const el = document.elementFromPoint(x, y)
+      return el instanceof Element ? el.closest<HTMLElement>('[data-exam-type]') : null
+    }
+    const onMove = (e: PointerEvent) => {
+      const drag = dragRef.current
+      if (!drag || e.pointerId !== drag.pointerId) return
+      if (!drag.moved && Math.abs(e.clientY - drag.startY) < 3) return
+      drag.moved = true
+      const row = rowAt(e.clientX, e.clientY)
+      const type = row?.dataset.examType as ExamType | undefined
+      if (!row || !type || !SEGMENT_BY_TYPE.has(type) || type === drag.type) {
+        drag.drop = null
+        setDropTarget(null)
+        return
+      }
+      const rect = row.getBoundingClientRect()
+      const after = e.clientY > rect.top + rect.height / 2
+      if (drag.drop?.type === type && drag.drop.after === after) return
+      drag.drop = { type, after }
+      setDropTarget({ type, after })
+    }
+    const onUp = (e: PointerEvent) => {
+      if (dragRef.current?.pointerId !== e.pointerId) return
+      finishDrag()
+    }
+    const onCancel = (e: PointerEvent) => {
+      if (dragRef.current?.pointerId !== e.pointerId) return
+      cancelDrag()
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') cancelDrag()
+    }
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    window.addEventListener('pointercancel', onCancel)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      window.removeEventListener('pointercancel', onCancel)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [dragType])
+
+  /** 手柄聚焦时也可用 ↑ ↓ 调整顺序，兼顾键盘操作 */
+  const moveByKeyboard = (type: ExamType, delta: number) => {
+    setExamOrder((prev) => {
+      const from = prev.indexOf(type)
+      const to = from + delta
+      if (from < 0 || to < 0 || to >= prev.length) return prev
+      const next = [...prev]
+      ;[next[from], next[to]] = [next[to], next[from]]
+      return next
+    })
+  }
+
+  const onHandleKeyDown = (type: ExamType, e: ReactKeyboardEvent<HTMLButtonElement>) => {
+    if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      moveByKeyboard(type, -1)
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      moveByKeyboard(type, 1)
+    }
   }
 
   return (
@@ -96,16 +268,14 @@ export default function HomePage() {
           </div>
           <div className="d-flex align-items-center gap-2 ms-auto">
             <span className="text-muted small">自定义</span>
-            <input
-              type="number"
+            <CountStepper
+              value={count}
               min={1}
               max={100}
-              className="form-control count-input"
-              value={count}
-              onChange={(e) => {
-                if (e.target.value === '') return
-                applyCount(Number(e.target.value))
-              }}
+              label="自定义每组题数"
+              decreaseLabel="减少每组题数"
+              increaseLabel="增加每组题数"
+              onChange={applyCount}
             />
           </div>
         </div>
@@ -130,7 +300,7 @@ export default function HomePage() {
         </button>
       </section>
 
-      {/* 套卷模式：默认 34 题整卷，分模块出题；也可自定义题型与题数 */}
+      {/* 套卷模式：默认 34 题整卷，分模块出题；也可自定义题型、题数与顺序 */}
       <section className="mt-4">
         <button type="button" className="exam-banner w-100" onClick={startExam}>
           <span className={`cat-icon ${EXAM_CATEGORY.tint}`}>
@@ -176,30 +346,68 @@ export default function HomePage() {
       </footer>
 
       {showExamBuilder && (
-        <div className="modal-overlay" onClick={() => setShowExamBuilder(false)}>
+        <div
+          className="modal-overlay"
+          onPointerDown={(e) => {
+            overlayDownRef.current = e.target === e.currentTarget
+          }}
+          onClick={(e) => {
+            const close = overlayDownRef.current && e.target === e.currentTarget
+            overlayDownRef.current = false
+            if (close) setShowExamBuilder(false)
+          }}
+        >
           <div className="modal-card" onClick={(e) => e.stopPropagation()}>
             <div className="modal-title">
               <i className="bi bi-sliders me-2" />
               自定义套卷
             </div>
             <div className="modal-body">
-              <p className="mb-3">为每个题型设置题数（0 表示不包含），题目按以下题型顺序出题。</p>
+              <p className="mb-2">为每个题型设置题数（0 表示不包含）。</p>
+              <p className="exam-builder-hint">
+                <i className="bi bi-grip-vertical me-1" aria-hidden="true" />
+                拖动左侧手柄调整顺序，套卷将按此顺序出题
+              </p>
               <div className="exam-builder-rows">
-                {EXAM_SEGMENTS.map((s) => (
-                  <label key={s.type} className="exam-builder-row">
-                    <span className="exam-builder-label">{s.label}</span>
-                    <input
-                      type="number"
+                {orderedSegments.map((s) => (
+                  <div
+                    key={s.type}
+                    data-exam-type={s.type}
+                    className={[
+                      'exam-builder-row',
+                      dragType === s.type ? 'is-dragging' : '',
+                      dropTarget?.type === s.type
+                        ? dropTarget.after
+                          ? 'drop-after'
+                          : 'drop-before'
+                        : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                  >
+                    <button
+                      type="button"
+                      className="exam-builder-handle"
+                      aria-label={`拖动调整${s.label}顺序`}
+                      title="拖动调整顺序（也可用 ↑ ↓ 键）"
+                      onPointerDown={(e) => beginDrag(s.type, e)}
+                      onKeyDown={(e) => onHandleKeyDown(s.type, e)}
+                    >
+                      <i className="bi bi-grip-vertical" aria-hidden="true" />
+                    </button>
+                    <label className="exam-builder-label" htmlFor={`exam-count-${s.type}`}>
+                      {s.label}
+                    </label>
+                    <CountStepper
+                      id={`exam-count-${s.type}`}
+                      value={examCounts[s.type] ?? 0}
                       min={0}
                       max={EXAM_TYPE_MAX}
-                      className="form-control exam-builder-input"
-                      value={examCounts[s.type] ?? 0}
-                      onChange={(e) => {
-                        if (e.target.value === '') return
-                        applyExamCount(s.type, Number(e.target.value))
-                      }}
+                      decreaseLabel={`减少${s.label}题数`}
+                      increaseLabel={`增加${s.label}题数`}
+                      onChange={(v) => applyExamCount(s.type, v)}
                     />
-                  </label>
+                  </div>
                 ))}
               </div>
               <div className="exam-builder-total mt-3">
@@ -207,7 +415,14 @@ export default function HomePage() {
               </div>
             </div>
             <div className="modal-actions">
-              <button type="button" className="btn btn-outline-secondary" onClick={() => setExamCounts(defaultExamCounts())}>
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={() => {
+                  setExamCounts(defaultExamCounts())
+                  setExamOrder([...DEFAULT_EXAM_ORDER])
+                }}
+              >
                 恢复默认
               </button>
               <button type="button" className="btn btn-outline-secondary" onClick={() => setShowExamBuilder(false)}>

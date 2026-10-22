@@ -596,4 +596,120 @@ describe('自定义套卷', () => {
     expect(screen.getByText('共 34 题')).toBeTruthy()
     expect((screen.getByLabelText('加减法') as HTMLInputElement).value).toBe('4')
   })
+
+  it('自定义加减按钮按 1 增减题数，并在上下限处禁用', () => {
+    sessionStorage.removeItem('cse-training-exam-custom')
+    sessionStorage.removeItem('cse-training-exam-order')
+    renderTraining('/')
+
+    fireEvent.click(screen.getByText('自定义套卷 · 题型与题数'))
+    const input = screen.getByLabelText('加减法') as HTMLInputElement
+    const decrease = screen.getByLabelText('减少加减法题数') as HTMLButtonElement
+    const increase = screen.getByLabelText('增加加减法题数') as HTMLButtonElement
+
+    expect(input.value).toBe('4')
+    expect(decrease.disabled).toBe(false)
+    fireEvent.click(increase)
+    expect(input.value).toBe('5')
+    expect(screen.getByText('共 35 题')).toBeTruthy()
+
+    fireEvent.click(decrease)
+    fireEvent.click(decrease)
+    expect(input.value).toBe('3')
+    expect(screen.getByText('共 33 题')).toBeTruthy()
+
+    // 下限 0：减少按钮禁用；上限 100：增加按钮禁用
+    fireEvent.change(input, { target: { value: '0' } })
+    expect(decrease.disabled).toBe(true)
+    expect(increase.disabled).toBe(false)
+    fireEvent.change(input, { target: { value: '150' } })
+    expect(input.value).toBe('100')
+    expect(increase.disabled).toBe(true)
+    expect(decrease.disabled).toBe(false)
+  })
+
+  it('URL order 参数决定模块与出题顺序', () => {
+    const { container } = renderTraining('/train/exam?addsub=1&multiply=1&order=multiply,addsub')
+    const labels = Array.from(container.querySelectorAll('.progress-module-label')).map((el) => el.textContent)
+    expect(labels[0]).toContain('乘法运算')
+    expect(labels[1]).toContain('加减法')
+  })
+
+  it('拖动题型手柄调整顺序，并按新顺序开始考试', () => {
+    sessionStorage.removeItem('cse-training-exam-custom')
+    sessionStorage.removeItem('cse-training-exam-order')
+    const { container } = renderTraining('/')
+
+    fireEvent.click(screen.getByText('自定义套卷 · 题型与题数'))
+    const rowOrder = () =>
+      Array.from(container.querySelectorAll<HTMLElement>('.exam-builder-row')).map(
+        (row) => row.dataset.examType,
+      )
+    expect(rowOrder()).toEqual([
+      'addsub',
+      'fraction',
+      'multiply',
+      'baseperiodshare',
+      'sharegap',
+      'baseperiod',
+    ])
+
+    // 模拟把「加减法」拖到「乘法运算」下方
+    const targetRow = container.querySelector<HTMLElement>('[data-exam-type="multiply"]')!
+    const originalElementFromPoint = document.elementFromPoint
+    document.elementFromPoint = (() => targetRow) as typeof document.elementFromPoint
+    try {
+      const handle = screen.getByLabelText('拖动调整加减法顺序')
+      fireEvent.pointerDown(handle, { pointerId: 1, button: 0, clientY: 10 })
+      fireEvent.pointerMove(window, { pointerId: 1, clientX: 20, clientY: 30 })
+      fireEvent.pointerUp(window, { pointerId: 1, clientX: 20, clientY: 30 })
+    } finally {
+      document.elementFromPoint = originalElementFromPoint
+    }
+
+    expect(rowOrder()).toEqual([
+      'fraction',
+      'multiply',
+      'addsub',
+      'baseperiodshare',
+      'sharegap',
+      'baseperiod',
+    ])
+    // 顺序已写入会话存储
+    expect(JSON.parse(sessionStorage.getItem('cse-training-exam-order')!)).toEqual([
+      'fraction',
+      'multiply',
+      'addsub',
+      'baseperiodshare',
+      'sharegap',
+      'baseperiod',
+    ])
+
+    // 开始考试后进度条按拖动后的顺序展示模块
+    const modal = container.querySelector<HTMLElement>('.modal-card')!
+    fireEvent.click(within(modal).getByText('开始考试'))
+    const moduleLabels = Array.from(container.querySelectorAll('.progress-module-label')).map(
+      (el) => el.textContent,
+    )
+    expect(moduleLabels[0]).toContain('比较大小')
+    expect(moduleLabels[1]).toContain('乘法运算')
+    expect(moduleLabels[2]).toContain('加减法')
+  })
+
+  it('题型手柄支持 ↑ ↓ 键调整顺序，恢复默认同时还原顺序', () => {
+    sessionStorage.removeItem('cse-training-exam-order')
+    const { container } = renderTraining('/')
+
+    fireEvent.click(screen.getByText('自定义套卷 · 题型与题数'))
+    fireEvent.keyDown(screen.getByLabelText('拖动调整加减法顺序'), { key: 'ArrowDown' })
+
+    const rows = Array.from(container.querySelectorAll<HTMLElement>('.exam-builder-row'))
+    expect(rows[0].dataset.examType).toBe('fraction')
+    expect(rows[1].dataset.examType).toBe('addsub')
+
+    fireEvent.click(screen.getByText('恢复默认'))
+    const resetRows = Array.from(container.querySelectorAll<HTMLElement>('.exam-builder-row'))
+    expect(resetRows[0].dataset.examType).toBe('addsub')
+    expect(resetRows[1].dataset.examType).toBe('fraction')
+  })
 })

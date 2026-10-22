@@ -65,19 +65,34 @@ const LETTERS = ['A', 'B', 'C', 'D']
 const EXAM_TYPE_MAX = 100
 
 /**
- * 解析 URL 中的套卷组卷参数（如 ?addsub=4&multiply=10）。
+ * 解析 URL 中的套卷组卷参数（如 ?addsub=4&multiply=10&order=multiply,addsub）。
+ * order 记录自定义的题型顺序；缺省时按默认套卷顺序。
  * 无任何组卷参数或有效题数均为 0 时返回 undefined，使用默认套卷。
  */
 function parseExamSegments(searchParams: URLSearchParams): ExamSegment[] | undefined {
+  const byType = new Map(EXAM_SEGMENTS.map((s) => [s.type, s]))
+  const order: ExamSegment['type'][] = []
+  for (const raw of (searchParams.get('order') ?? '').split(',')) {
+    const type = raw.trim() as ExamSegment['type']
+    if (byType.has(type) && !order.includes(type)) order.push(type)
+  }
+  // 未出现在 order 中的题型按默认顺序补齐
+  for (const s of EXAM_SEGMENTS) {
+    if (!order.includes(s.type)) order.push(s.type)
+  }
+
   let hasParam = false
   const segments: ExamSegment[] = []
-  for (const s of EXAM_SEGMENTS) {
-    const raw = searchParams.get(s.type)
+  for (const type of order) {
+    const raw = searchParams.get(type)
     if (raw === null) continue
     hasParam = true
     const v = Number.parseInt(raw, 10)
     const count = Number.isFinite(v) ? Math.min(EXAM_TYPE_MAX, Math.max(0, v)) : 0
-    if (count > 0) segments.push({ label: s.label, type: s.type, count })
+    if (count > 0) {
+      const meta = byType.get(type)!
+      segments.push({ label: meta.label, type, count })
+    }
   }
   return hasParam && segments.length > 0 ? segments : undefined
 }

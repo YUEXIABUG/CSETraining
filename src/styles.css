@@ -277,10 +277,85 @@ button {
   box-shadow: 0 4px 12px -2px var(--accent-border);
 }
 
-.count-input {
-  max-width: 110px;
-  border-radius: var(--radius-sm);
+/* 题数步进器：自定义加减按钮，替代浏览器原生数字输入框箭头 */
+.count-stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--card-border);
+  border-radius: 999px;
+  background: var(--card-bg);
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.25s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.count-stepper:focus-within {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.count-step-btn {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1;
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.12s ease;
+}
+
+.count-step-btn:hover:not(:disabled) {
+  background: var(--accent-soft);
+  color: var(--primary);
+}
+
+.count-step-btn:active:not(:disabled) {
+  transform: scale(0.9);
+}
+
+.count-step-btn:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 1px;
+}
+
+.count-step-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.count-step-input {
+  width: 52px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 0.95rem;
+  font-weight: 700;
   font-variant-numeric: tabular-nums;
+  line-height: 30px;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.count-step-input:focus {
+  outline: none;
+  background: transparent;
+}
+
+.count-step-input::-webkit-outer-spin-button,
+.count-step-input::-webkit-inner-spin-button {
+  margin: 0;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 /* 自定义题数组不被压缩换行，空间不足时整组换行 */
@@ -1974,34 +2049,113 @@ button {
   outline-offset: 2px;
 }
 
-/* 自定义套卷弹窗：题型题数设置 */
+/* 自定义套卷弹窗：题型题数设置 + 拖动排序 */
+.exam-builder-hint {
+  margin: 0 0 6px;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 .exam-builder-rows {
   display: flex;
   flex-direction: column;
 }
 
 .exam-builder-row {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 9px 0;
-  cursor: pointer;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  transition: background-color 0.15s ease, opacity 0.15s ease;
 }
 
 .exam-builder-row + .exam-builder-row {
   border-top: 1px dashed var(--card-border);
 }
 
-.exam-builder-label {
-  font-weight: 600;
-  color: var(--ink);
+.exam-builder-row:hover {
+  background: var(--hover-bg);
 }
 
-.exam-builder-input {
-  width: 110px;
-  text-align: center;
-  font-family: var(--font-mono);
+.exam-builder-row.is-dragging {
+  opacity: 0.45;
+  background: var(--accent-soft);
+}
+
+/* 拖动时的插入位置提示线 */
+.exam-builder-row.drop-before::before,
+.exam-builder-row.drop-after::after {
+  content: '';
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  z-index: 1;
+  pointer-events: none;
+}
+
+.exam-builder-row.drop-before::before {
+  top: -2px;
+}
+
+.exam-builder-row.drop-after::after {
+  bottom: -2px;
+}
+
+.exam-builder-handle {
+  width: 28px;
+  height: 28px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--muted);
+  opacity: 0.72;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: grab;
+  touch-action: none;
+  transition: color 0.12s ease, background-color 0.12s ease, border-color 0.12s ease,
+    opacity 0.12s ease;
+}
+
+.exam-builder-handle:hover {
+  opacity: 1;
+  color: var(--primary);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.exam-builder-handle:active,
+.exam-builder-row.is-dragging .exam-builder-handle {
+  cursor: grabbing;
+  opacity: 1;
+  color: var(--primary);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.exam-builder-handle:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+.exam-builder-label {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-weight: 600;
+  color: var(--ink);
+  cursor: default;
 }
 
 .exam-builder-total {
